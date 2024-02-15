@@ -1,4 +1,4 @@
-using OptimizationBase, OptimizationOptimJL, OptimizationOptimisers, Test
+using OptimizationBase, Test
 using ForwardDiff, Zygote, ReverseDiff, FiniteDiff, Tracker
 using ModelingToolkit, Enzyme, Random
 

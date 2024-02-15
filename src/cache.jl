@@ -45,3 +45,9 @@ function SciMLBase.__init(prob::SciMLBase.OptimizationProblem, opt,
         reltol, progress,
         kwargs...)
 end
+
+# Wrapper for fields that may change in `reinit!(cache)` of a cache.
+mutable struct ReInitCache{uType, P}
+    u0::uType
+    p::P
+end
