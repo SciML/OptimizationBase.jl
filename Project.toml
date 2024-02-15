@@ -3,8 +3,19 @@ uuid = "bca83a33-5cc9-4baa-983d-23429ab6bcbb"
 authors = ["Vaibhav Dixit <vaibhavyashdixit@gmail.com> and contributors"]
 version = "1.0.0-DEV"
 
+[deps]
+ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
+ConsoleProgressMonitor = "88cd18e8-d9cc-4ea6-8889-5259c0d15c8b"
+DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+LoggingExtras = "e6f89c97-d47a-5376-807f-9c37f3926c36"
+ProgressLogging = "33c8b6b6-d38a-422a-b730-caa89a2f386c"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+Requires = "ae029012-a4dd-5104-9daa-d747884805df"
+SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
+
 [compat]
-julia = "1"
+julia = "1.9"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
