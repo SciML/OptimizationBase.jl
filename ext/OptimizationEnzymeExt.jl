@@ -287,6 +287,7 @@ if f.grad === nothing
                 Enzyme.Duplicated(θ, res),
                 Const(p),
                 args...)
+            return res
         end
     end
 else
@@ -349,10 +350,11 @@ end
 if f.cons === nothing
     cons = nothing
 else
+
     cons_oop = (θ) -> f.cons(θ, p)
 end
 
-if cons !== nothing && f.cons_j === nothing
+if f.cons !== nothing && f.cons_j === nothing
     cons_j = function (θ)
         J = Enzyme.jacobian(Enzyme.Forward, cons_oop, θ)
         if J isa Vector
@@ -364,7 +366,7 @@ else
     cons_j = (θ) -> f.cons_j(θ, p)
 end
 
-if cons !== nothing && f.cons_h === nothing
+if f.cons !== nothing && f.cons_h === nothing
     fncs = map(1:num_cons) do i
         function (x)
             return f.cons(x, p)[i]
@@ -400,13 +402,13 @@ else
 end
 
 return OptimizationFunction{false}(f.f, adtype; grad = grad, hess = hess, hv = hv,
-    cons = cons, cons_j = cons_j, cons_h = cons_h,
+    cons = cons_oop, cons_j = cons_j, cons_h = cons_h,
     hess_prototype = f.hess_prototype,
     cons_jac_prototype = f.cons_jac_prototype,
     cons_hess_prototype = f.cons_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
     cache::OptimizationBase.ReInitCache,
     adtype::AutoEnzyme,
     num_cons = 0)
@@ -424,6 +426,7 @@ if f.grad === nothing
                 Enzyme.Duplicated(θ, res),
                 Const(p),
                 args...)
+            return res
         end
     end
 else
@@ -489,7 +492,7 @@ else
     cons_oop = (θ) -> f.cons(θ, p)
 end
 
-if cons !== nothing && f.cons_j === nothing
+if f.cons !== nothing && f.cons_j === nothing
     cons_j = function (θ)
         J = Enzyme.jacobian(Enzyme.Forward, cons_oop, θ)
         if J isa Vector
@@ -501,7 +504,7 @@ else
     cons_j = (θ) -> f.cons_j(θ, p)
 end
 
-if cons !== nothing && f.cons_h === nothing
+if f.cons !== nothing && f.cons_h === nothing
     fncs = map(1:num_cons) do i
         function (x)
             return f.cons(x, p)[i]
@@ -531,13 +534,14 @@ if cons !== nothing && f.cons_h === nothing
 
             res[i] = reduce(vcat, [reshape(vdbθ[i], (1, length(vdbθ[i]))) for i in eachindex(θ)])
         end
+        return res
     end
 else
     cons_h = (res, θ) -> f.cons_h(res, θ, p)
 end
 
 return OptimizationFunction{false}(f.f, adtype; grad = grad, hess = hess, hv = hv,
-    cons = cons, cons_j = cons_j, cons_h = cons_h,
+    cons = cons_oop, cons_j = cons_j, cons_h = cons_h,
     hess_prototype = f.hess_prototype,
     cons_jac_prototype = f.cons_jac_prototype,
     cons_hess_prototype = f.cons_hess_prototype)
