@@ -357,7 +357,7 @@ end
 if f.cons !== nothing && f.cons_j === nothing
     cons_j = function (θ)
         J = Enzyme.jacobian(Enzyme.Forward, cons_oop, θ)
-        if J isa Vector
+        if size(J, 1) == 1
             return J[1, :]
         end
         return J
@@ -396,9 +396,10 @@ if f.cons !== nothing && f.cons_h === nothing
 
             res[i] = reduce(vcat, [reshape(vdbθ[i], (1, length(vdbθ[i]))) for i in eachindex(θ)])
         end
+        return res
     end
 else
-    cons_h = (res, θ) -> f.cons_h(res, θ, p)
+    cons_h = (θ) -> f.cons_h(θ, p)
 end
 
 return OptimizationFunction{false}(f.f, adtype; grad = grad, hess = hess, hv = hv,
@@ -495,7 +496,7 @@ end
 if f.cons !== nothing && f.cons_j === nothing
     cons_j = function (θ)
         J = Enzyme.jacobian(Enzyme.Forward, cons_oop, θ)
-        if J isa Vector
+        if size(J, 1) == 1
             return J[1, :]
         end
         return J
@@ -537,7 +538,7 @@ if f.cons !== nothing && f.cons_h === nothing
         return res
     end
 else
-    cons_h = (res, θ) -> f.cons_h(res, θ, p)
+    cons_h = (θ) -> f.cons_h(θ, p)
 end
 
 return OptimizationFunction{false}(f.f, adtype; grad = grad, hess = hess, hv = hv,
