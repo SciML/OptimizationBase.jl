@@ -396,7 +396,11 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
             jaccache = FD.JacobianCache(copy(x), copy(y0), copy(y0), adtype.fdjtype;
                 colorvec = cons_jac_colorvec,
                 sparsity = f.cons_jac_prototype)
-            return FD.finite_difference_jacobian(cons, θ, jaccache)
+            if num_cons > 1
+                return FD.finite_difference_jacobian(cons, θ, jaccache)
+            else
+                return FD.finite_difference_jacobian(cons, θ, jaccache)[1, :]
+            end
         end
     else
         cons_j = (θ) -> f.cons_j(θ, p)
