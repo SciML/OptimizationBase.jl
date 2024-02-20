@@ -17,7 +17,7 @@ function default_chunk_size(len)
     end
 end
 
-function OptimizationBase.instantiate_function(f, x, adtype::AutoReverseDiff,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::AutoReverseDiff,
         p = SciMLBase.NullParameters(),
         num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
@@ -150,7 +150,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::AutoReverseDiff,
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
         adtype::AutoReverseDiff, num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
 
@@ -285,5 +285,275 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
         cons_hess_prototype = f.cons_hess_prototype,
         lag_h, f.lag_hess_prototype)
 end
+
+
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x, adtype::AutoReverseDiff,
+    p = SciMLBase.NullParameters(),
+    num_cons = 0)
+    _f = (θ, args...) -> first(f.f(θ, p, args...))
+
+    chunksize = default_chunk_size(length(x))
+
+    if f.grad === nothing
+        if adtype.compile
+            _tape = ReverseDiff.GradientTape(_f, x)
+            tape = ReverseDiff.compile(_tape)
+            grad = function (θ, args...)
+                ReverseDiff.gradient(tape, θ)
+            end
+        else
+            cfg = ReverseDiff.GradientConfig(x)
+            grad = (θ, args...) -> ReverseDiff.gradient(
+                x -> _f(x, args...),
+                θ,
+                cfg)
+        end
+    else
+        grad = (θ, args...) -> f.grad(θ, p, args...)
+    end
+
+    if f.hess === nothing
+        if adtype.compile
+            T = ForwardDiff.Tag(OptimizationReverseDiffTag(), eltype(x))
+            xdual = ForwardDiff.Dual{
+                typeof(T),
+                eltype(x),
+                chunksize,
+            }.(x, Ref(ForwardDiff.Partials((ones(eltype(x), chunksize)...,))))
+            h_tape = ReverseDiff.GradientTape(_f, xdual)
+            htape = ReverseDiff.compile(h_tape)
+            function g(θ)
+                res1 = zeros(eltype(θ), length(θ))
+                ReverseDiff.gradient!(res1, htape, θ)
+            end
+            jaccfg = ForwardDiff.JacobianConfig(g, x, ForwardDiff.Chunk{chunksize}(), T)
+            hess = function (θ, args...)
+                ForwardDiff.jacobian(g, θ, jaccfg, Val{false}())
+            end
+        else
+            hess = function (θ, args...)
+                ReverseDiff.hessian(x -> _f(x, args...), θ)
+            end
+        end
+    else
+        hess = (θ, args...) -> f.hess(θ, p, args...)
+    end
+
+    if f.hv === nothing
+        hv = function (θ, v, args...)
+            # _θ = ForwardDiff.Dual.(θ, v)
+            # res = similar(_θ)
+            # grad(res, _θ, args...)
+            # H .= getindex.(ForwardDiff.partials.(res), 1)
+            return hess(θ, args...) * v
+        end
+    else
+        hv = f.hv
+    end
+
+    if f.cons === nothing
+        cons = nothing
+    else
+        cons = (θ) -> f.cons(θ, p)
+        cons_oop = cons
+    end
+
+    if cons !== nothing && f.cons_j === nothing
+        if adtype.compile
+            _jac_tape = ReverseDiff.JacobianTape(cons_oop, x)
+            jac_tape = ReverseDiff.compile(_jac_tape)
+            cons_j = function (θ)
+                ReverseDiff.jacobian!(jac_tape, θ)
+            end
+        else
+            cjconfig = ReverseDiff.JacobianConfig(x)
+            cons_j = function (θ)
+                if num_cons > 1
+                    return ReverseDiff.jacobian(cons_oop, θ, cjconfig)
+                else
+                    return ReverseDiff.jacobian(cons_oop, θ, cjconfig)[1, :]
+                end
+            end
+        end
+    else
+        cons_j = (θ) -> f.cons_j(θ, p)
+    end
+
+    if cons !== nothing && f.cons_h === nothing
+        fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
+        if adtype.compile
+            consh_tapes = ReverseDiff.GradientTape.(fncs, Ref(xdual))
+            conshtapes = ReverseDiff.compile.(consh_tapes)
+            function grad_cons(θ, htape)
+                ReverseDiff.gradient!(htape, θ)
+            end
+            gs = [x -> grad_cons(x, conshtapes[i]) for i in 1:num_cons]
+            jaccfgs = [ForwardDiff.JacobianConfig(gs[i],
+                x,
+                ForwardDiff.Chunk{chunksize}(),
+                T) for i in 1:num_cons]
+            cons_h = function (θ)
+                map(1:num_cons) do i
+                    ForwardDiff.jacobian(gs[i], θ, jaccfgs[i], Val{false}())
+                end
+            end
+        else
+            cons_h = function (θ)
+                map(1:num_cons) do i
+                    ReverseDiff.hessian(fncs[i], θ)
+                end
+            end
+        end
+    else
+        cons_h = (θ) -> f.cons_h(θ, p)
+    end
+
+    if f.lag_h === nothing
+        lag_h = nothing # Consider implementing this
+    else
+        lag_h = (θ, σ, μ) -> f.lag_h(θ, σ, μ, p)
+    end
+    return OptimizationFunction{false}(f.f, adtype; grad = grad, hess = hess, hv = hv,
+        cons = cons, cons_j = cons_j, cons_h = cons_h,
+        hess_prototype = f.hess_prototype,
+        cons_jac_prototype = f.cons_jac_prototype,
+        cons_hess_prototype = f.cons_hess_prototype,
+        lag_h, f.lag_hess_prototype)
+end
+
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache,
+    adtype::AutoReverseDiff, num_cons = 0)
+    _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
+
+    chunksize = default_chunk_size(length(cache.u0))
+    p = cache.p
+
+    if f.grad === nothing
+        if adtype.compile
+            _tape = ReverseDiff.GradientTape(_f, x)
+            tape = ReverseDiff.compile(_tape)
+            grad = function (θ, args...)
+                ReverseDiff.gradient(tape, θ)
+            end
+        else
+            cfg = ReverseDiff.GradientConfig(x)
+            grad = (θ, args...) -> ReverseDiff.gradient(
+                x -> _f(x, args...),
+                θ,
+                cfg)
+        end
+    else
+        grad = (θ, args...) -> f.grad(θ, p, args...)
+    end
+
+    if f.hess === nothing
+        if adtype.compile
+            T = ForwardDiff.Tag(OptimizationReverseDiffTag(), eltype(x))
+            xdual = ForwardDiff.Dual{
+                typeof(T),
+                eltype(x),
+                chunksize,
+            }.(x, Ref(ForwardDiff.Partials((ones(eltype(x), chunksize)...,))))
+            h_tape = ReverseDiff.GradientTape(_f, xdual)
+            htape = ReverseDiff.compile(h_tape)
+            function g(θ)
+                res1 = zeros(eltype(θ), length(θ))
+                ReverseDiff.gradient!(res1, htape, θ)
+            end
+            jaccfg = ForwardDiff.JacobianConfig(g, x, ForwardDiff.Chunk{chunksize}(), T)
+            hess = function (θ, args...)
+                ForwardDiff.jacobian(g, θ, jaccfg, Val{false}())
+            end
+        else
+            hess = function (θ, args...)
+                ReverseDiff.hessian(x -> _f(x, args...), θ)
+            end
+        end
+    else
+        hess = (θ, args...) -> f.hess(θ, p, args...)
+    end
+
+    if f.hv === nothing
+        hv = function (θ, v, args...)
+            # _θ = ForwardDiff.Dual.(θ, v)
+            # res = similar(_θ)
+            # grad(res, _θ, args...)
+            # H .= getindex.(ForwardDiff.partials.(res), 1)
+            return hess(θ, args...) * v
+        end
+    else
+        hv = f.hv
+    end
+
+    if f.cons === nothing
+        cons = nothing
+    else
+        cons = (θ) -> f.cons(θ, p)
+        cons_oop = cons
+    end
+
+    if cons !== nothing && f.cons_j === nothing
+        if adtype.compile
+            _jac_tape = ReverseDiff.JacobianTape(cons_oop, x)
+            jac_tape = ReverseDiff.compile(_jac_tape)
+            cons_j = function (θ)
+                ReverseDiff.jacobian!(jac_tape, θ)
+            end
+        else
+            cjconfig = ReverseDiff.JacobianConfig(x)
+            cons_j = function (θ)
+                if num_cons > 1
+                    return ReverseDiff.jacobian(cons_oop, θ, cjconfig)
+                else
+                    return ReverseDiff.jacobian(cons_oop, θ, cjconfig)[1, :]
+                end
+            end
+        end
+    else
+        cons_j = (θ) -> f.cons_j(θ, p)
+    end
+
+    if cons !== nothing && f.cons_h === nothing
+        fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
+        if adtype.compile
+            consh_tapes = ReverseDiff.GradientTape.(fncs, Ref(xdual))
+            conshtapes = ReverseDiff.compile.(consh_tapes)
+            function grad_cons(θ, htape)
+                ReverseDiff.gradient!(htape, θ)
+            end
+            gs = [x -> grad_cons(x, conshtapes[i]) for i in 1:num_cons]
+            jaccfgs = [ForwardDiff.JacobianConfig(gs[i],
+                x,
+                ForwardDiff.Chunk{chunksize}(),
+                T) for i in 1:num_cons]
+            cons_h = function (θ)
+                map(1:num_cons) do i
+                    ForwardDiff.jacobian(gs[i], θ, jaccfgs[i], Val{false}())
+                end
+            end
+        else
+            cons_h = function (θ)
+                map(1:num_cons) do i
+                    ReverseDiff.hessian(fncs[i], θ)
+                end
+            end
+        end
+    else
+        cons_h = (θ) -> f.cons_h(θ, p)
+    end
+
+    if f.lag_h === nothing
+        lag_h = nothing # Consider implementing this
+    else
+        lag_h = (θ, σ, μ) -> f.lag_h(θ, σ, μ, p)
+    end
+    return OptimizationFunction{false}(f.f, adtype; grad = grad, hess = hess, hv = hv,
+        cons = cons, cons_j = cons_j, cons_h = cons_h,
+        hess_prototype = f.hess_prototype,
+        cons_jac_prototype = f.cons_jac_prototype,
+        cons_hess_prototype = f.cons_hess_prototype,
+        lag_h, f.lag_hess_prototype)
+end
+
 
 end
