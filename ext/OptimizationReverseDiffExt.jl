@@ -299,7 +299,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             _tape = ReverseDiff.GradientTape(_f, x)
             tape = ReverseDiff.compile(_tape)
             grad = function (θ, args...)
-                ReverseDiff.gradient(tape, θ)
+                ReverseDiff.gradient!(tape, θ)
             end
         else
             cfg = ReverseDiff.GradientConfig(x)
@@ -323,8 +323,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             h_tape = ReverseDiff.GradientTape(_f, xdual)
             htape = ReverseDiff.compile(h_tape)
             function g(θ)
-                res1 = zeros(eltype(θ), length(θ))
-                ReverseDiff.gradient!(res1, htape, θ)
+                ReverseDiff.gradient!(htape, θ)
             end
             jaccfg = ForwardDiff.JacobianConfig(g, x, ForwardDiff.Chunk{chunksize}(), T)
             hess = function (θ, args...)
@@ -363,7 +362,11 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             _jac_tape = ReverseDiff.JacobianTape(cons_oop, x)
             jac_tape = ReverseDiff.compile(_jac_tape)
             cons_j = function (θ)
-                ReverseDiff.jacobian!(jac_tape, θ)
+                if num_cons > 1
+                    ReverseDiff.jacobian!(jac_tape, θ)
+                else
+                    ReverseDiff.jacobian!(jac_tape, θ)[1, :]
+                end
             end
         else
             cjconfig = ReverseDiff.JacobianConfig(x)
@@ -433,7 +436,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
             _tape = ReverseDiff.GradientTape(_f, x)
             tape = ReverseDiff.compile(_tape)
             grad = function (θ, args...)
-                ReverseDiff.gradient(tape, θ)
+                ReverseDiff.gradient!(tape, θ)
             end
         else
             cfg = ReverseDiff.GradientConfig(x)
@@ -457,8 +460,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
             h_tape = ReverseDiff.GradientTape(_f, xdual)
             htape = ReverseDiff.compile(h_tape)
             function g(θ)
-                res1 = zeros(eltype(θ), length(θ))
-                ReverseDiff.gradient!(res1, htape, θ)
+                ReverseDiff.gradient!(htape, θ)
             end
             jaccfg = ForwardDiff.JacobianConfig(g, x, ForwardDiff.Chunk{chunksize}(), T)
             hess = function (θ, args...)
@@ -497,7 +499,11 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
             _jac_tape = ReverseDiff.JacobianTape(cons_oop, x)
             jac_tape = ReverseDiff.compile(_jac_tape)
             cons_j = function (θ)
-                ReverseDiff.jacobian!(jac_tape, θ)
+                if num_cons > 1
+                    ReverseDiff.jacobian!(jac_tape, θ)
+                else
+                    ReverseDiff.jacobian!(jac_tape, θ)[1, :]
+                end
             end
         else
             cjconfig = ReverseDiff.JacobianConfig(x)
