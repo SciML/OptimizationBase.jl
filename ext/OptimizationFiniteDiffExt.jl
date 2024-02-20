@@ -8,7 +8,7 @@ isdefined(Base, :get_extension) ? (using FiniteDiff) : (using ..FiniteDiff)
 
 const FD = FiniteDiff
 
-function OptimizationBase.instantiate_function(f, x, adtype::AutoFiniteDiff, p,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::AutoFiniteDiff, p,
         num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
     updatecache = (cache, x) -> (cache.xmm .= x; cache.xmp .= x; cache.xpm .= x; cache.xpp .= x; return cache)
@@ -116,7 +116,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::AutoFiniteDiff, p,
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
         adtype::AutoFiniteDiff, num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
     updatecache = (cache, x) -> (cache.xmm .= x; cache.xmp .= x; cache.xpm .= x; cache.xpp .= x; return cache)
@@ -229,5 +229,224 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
         cons_hess_prototype = f.cons_hess_prototype,
         lag_h, f.lag_hess_prototype)
 end
+
+
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x, adtype::AutoFiniteDiff, p,
+        num_cons = 0)
+    _f = (θ, args...) -> first(f.f(θ, p, args...))
+    updatecache = (cache, x) -> (cache.xmm .= x; cache.xmp .= x; cache.xpm .= x; cache.xpp .= x; return cache)
+
+    if f.grad === nothing
+        gradcache = FD.GradientCache(x, x, adtype.fdtype)
+        grad = (θ, args...) -> FD.finite_difference_gradient(x -> _f(x, args...),
+            θ, gradcache)
+    else
+        grad = (θ, args...) -> f.grad(G, θ, p, args...)
+    end
+
+    if f.hess === nothing
+        hesscache = FD.HessianCache(x, adtype.fdhtype)
+        hess = (θ, args...) -> FD.finite_difference_hessian(
+            x -> _f(x, args...), θ,
+            updatecache(hesscache, θ))
+    else
+        hess = (θ, args...) -> f.hess(θ, p, args...)
+    end
+
+    if f.hv === nothing
+        hv = function (θ, v, args...)
+            T = eltype(θ)
+            ϵ = sqrt(eps(real(T))) * max(one(real(T)), abs(norm(θ)))
+            @. θ += ϵ * v
+            cache2 = similar(θ)
+            grad(cache2, θ, args...)
+            @. θ -= 2ϵ * v
+            cache3 = similar(θ)
+            grad(cache3, θ, args...)
+            @. θ += ϵ * v
+            return @. (cache2 - cache3) / (2ϵ)
+        end
+    else
+        hv = f.hv
+    end
+
+    if f.cons === nothing
+        cons = nothing
+    else
+        cons = (θ) -> f.cons(θ, p)
+    end
+
+    cons_jac_colorvec = f.cons_jac_colorvec === nothing ? (1:length(x)) :
+                        f.cons_jac_colorvec
+
+    if cons !== nothing && f.cons_j === nothing
+        cons_j = function (θ)
+            y0 = zeros(eltype(θ), num_cons)
+            jaccache = FD.JacobianCache(copy(x), copy(y0), copy(y0), adtype.fdjtype;
+                colorvec = cons_jac_colorvec,
+                sparsity = f.cons_jac_prototype)
+            if num_cons > 1
+                return FD.finite_difference_jacobian(cons, θ, jaccache)
+            else
+                return FD.finite_difference_jacobian(cons, θ, jaccache)[1, :]
+            end
+        end
+    else
+        cons_j = (θ) -> f.cons_j(θ, p)
+    end
+
+    if cons !== nothing && f.cons_h === nothing
+        hess_cons_cache = [FD.HessianCache(copy(x), adtype.fdhtype)
+                           for i in 1:num_cons]
+        cons_h = function (θ)
+            return map(1:num_cons) do i
+                FD.finite_difference_hessian(
+                    x -> cons(x)[i], θ,
+                    updatecache(hess_cons_cache[i], θ))
+            end
+        end
+    else
+        cons_h = (θ) -> f.cons_h(θ, p)
+    end
+
+    if f.lag_h === nothing
+        lag_hess_cache = FD.HessianCache(copy(x), adtype.fdhtype)
+        c = zeros(num_cons)
+        h = zeros(length(x), length(x))
+        lag_h = let c = c, h = h
+            lag = function (θ, σ, μ)
+                f.cons(c, θ, p)
+                l = μ'c
+                if !iszero(σ)
+                    l += σ * f.f(θ, p)
+                end
+                l
+            end
+            function (θ, σ, μ)
+                FD.finite_difference_hessian(
+                    (x) -> lag(x, σ, μ),
+                    θ,
+                    updatecache(lag_hess_cache, θ))
+            end
+        end
+    else
+        lag_h = (θ, σ, μ) -> f.lag_h(θ, σ, μ, p)
+    end
+    return OptimizationFunction{false}(f, adtype; grad = grad, hess = hess, hv = hv,
+        cons = cons, cons_j = cons_j, cons_h = cons_h,
+        cons_jac_colorvec = cons_jac_colorvec,
+        hess_prototype = f.hess_prototype,
+        cons_jac_prototype = f.cons_jac_prototype,
+        cons_hess_prototype = f.cons_hess_prototype,
+        lag_h, f.lag_hess_prototype)
+end
+
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache,
+        adtype::AutoFiniteDiff, num_cons = 0)
+    _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
+    updatecache = (cache, x) -> (cache.xmm .= x; cache.xmp .= x; cache.xpm .= x; cache.xpp .= x; return cache)
+    p = cache.p
+
+    if f.grad === nothing
+        gradcache = FD.GradientCache(x, x, adtype.fdtype)
+        grad = (θ, args...) -> FD.finite_difference_gradient(x -> _f(x, args...),
+            θ, gradcache)
+    else
+        grad = (θ, args...) -> f.grad(G, θ, p, args...)
+    end
+
+    if f.hess === nothing
+        hesscache = FD.HessianCache(x, adtype.fdhtype)
+        hess = (θ, args...) -> FD.finite_difference_hessian!(
+            x -> _f(x, args...), θ,
+            updatecache(hesscache, θ))
+    else
+        hess = (θ, args...) -> f.hess(θ, p, args...)
+    end
+
+    if f.hv === nothing
+        hv = function (θ, v, args...)
+            T = eltype(θ)
+            ϵ = sqrt(eps(real(T))) * max(one(real(T)), abs(norm(θ)))
+            @. θ += ϵ * v
+            cache2 = similar(θ)
+            grad(cache2, θ, args...)
+            @. θ -= 2ϵ * v
+            cache3 = similar(θ)
+            grad(cache3, θ, args...)
+            @. θ += ϵ * v
+            return @. (cache2 - cache3) / (2ϵ)
+        end
+    else
+        hv = f.hv
+    end
+
+    if f.cons === nothing
+        cons = nothing
+    else
+        cons = (θ) -> f.cons(θ, p)
+    end
+
+    cons_jac_colorvec = f.cons_jac_colorvec === nothing ? (1:length(x)) :
+                        f.cons_jac_colorvec
+
+    if cons !== nothing && f.cons_j === nothing
+        cons_j = function (θ)
+            y0 = zeros(num_cons)
+            jaccache = FD.JacobianCache(copy(x), copy(y0), copy(y0), adtype.fdjtype;
+                colorvec = cons_jac_colorvec,
+                sparsity = f.cons_jac_prototype)
+            return FD.finite_difference_jacobian(cons, θ, jaccache)
+        end
+    else
+        cons_j = (θ) -> f.cons_j(θ, p)
+    end
+
+    if cons !== nothing && f.cons_h === nothing
+        hess_cons_cache = [FD.HessianCache(copy(x), adtype.fdhtype)
+                           for i in 1:num_cons]
+        cons_h = function (θ)
+            return map(1:num_cons) do i
+                FD.finite_difference_hessian(
+                    x -> cons(x)[i], θ,
+                    updatecache(hess_cons_cache[i], θ))
+            end
+        end
+    else
+        cons_h = (θ) -> f.cons_h(θ, p)
+    end
+
+    if f.lag_h === nothing
+        lag_hess_cache = FD.HessianCache(copy(x), adtype.fdhtype)
+        c = zeros(num_cons)
+        h = zeros(length(x), length(x))
+        lag_h = let c = c, h = h
+            lag = function (θ, σ, μ)
+                f.cons(c, θ, p)
+                l = μ'c
+                if !iszero(σ)
+                    l += σ * f.f(θ, p)
+                end
+                l
+            end
+            function (θ, σ, μ)
+                FD.finite_difference_hessian(
+                    (x) -> lag(x, σ, μ),
+                    θ,
+                    updatecache(lag_hess_cache, θ))
+            end
+        end
+    else
+        lag_h = (θ, σ, μ) -> f.lag_h(θ, σ, μ, p)
+    end
+    return OptimizationFunction{false}(f, adtype; grad = grad, hess = hess, hv = hv,
+        cons = cons, cons_j = cons_j, cons_h = cons_h,
+        cons_jac_colorvec = cons_jac_colorvec,
+        hess_prototype = f.hess_prototype,
+        cons_jac_prototype = f.cons_jac_prototype,
+        cons_hess_prototype = f.cons_hess_prototype,
+        lag_h, f.lag_hess_prototype)
+end
+
 
 end
