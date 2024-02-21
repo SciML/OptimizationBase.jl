@@ -21,5 +21,4 @@ include("function.jl")
 
 export solve, OptimizationCache
 
-
 end

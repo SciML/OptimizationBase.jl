@@ -56,7 +56,8 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
         adtype::AutoModelingToolkit, num_cons = 0)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
-    sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, cache.u0, cache.p;
+    sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, cache.u0,
+        cache.p;
         lcons = fill(0.0,
             num_cons),
         ucons = fill(0.0,
