@@ -264,7 +264,9 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
     cons_jac_colorvec = f.cons_jac_colorvec
     if cons !== nothing && f.cons_j === nothing
         res = zeros(eltype(x), num_cons)
-        cons_jac_prototype = Symbolics.jacobian_sparsity((res, x) -> (res .= cons(x)), res, x)
+        cons_jac_prototype = Symbolics.jacobian_sparsity((res, x) -> (res .= cons(x)),
+            res,
+            x)
         cons_jac_colorvec = matrix_colors(cons_jac_prototype)
         jaccache = ForwardColorJacCache(cons,
             x,
@@ -373,7 +375,9 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
     cons_jac_colorvec = f.cons_jac_colorvec
     if cons !== nothing && f.cons_j === nothing
         res = zeros(eltype(x), num_cons)
-        cons_jac_prototype = Symbolics.jacobian_sparsity((res, x) -> (res .= cons(x)), res, x)
+        cons_jac_prototype = Symbolics.jacobian_sparsity((res, x) -> (res .= cons(x)),
+            res,
+            x)
         cons_jac_colorvec = matrix_colors(cons_jac_prototype)
         jaccache = ForwardColorJacCache(cons,
             x,

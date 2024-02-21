@@ -8,7 +8,8 @@ isdefined(Base, :get_extension) ? (using FiniteDiff) : (using ..FiniteDiff)
 
 const FD = FiniteDiff
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::AutoFiniteDiff, p,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
+        adtype::AutoFiniteDiff, p,
         num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
     updatecache = (cache, x) -> (cache.xmm .= x; cache.xmp .= x; cache.xpm .= x; cache.xpp .= x; return cache)
@@ -116,7 +117,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
+        cache::OptimizationBase.ReInitCache,
         adtype::AutoFiniteDiff, num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
     updatecache = (cache, x) -> (cache.xmm .= x; cache.xmp .= x; cache.xpm .= x; cache.xpp .= x; return cache)
@@ -230,8 +232,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, ca
         lag_h, f.lag_hess_prototype)
 end
 
-
-function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x, adtype::AutoFiniteDiff, p,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x,
+        adtype::AutoFiniteDiff, p,
         num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
     updatecache = (cache, x) -> (cache.xmm .= x; cache.xmp .= x; cache.xpm .= x; cache.xpp .= x; return cache)
@@ -246,8 +248,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
 
     if f.hess === nothing
         hesscache = FD.HessianCache(x, adtype.fdhtype)
-        hess = (θ, args...) -> FD.finite_difference_hessian(
-            x -> _f(x, args...), θ,
+        hess = (θ, args...) -> FD.finite_difference_hessian(x -> _f(x, args...), θ,
             updatecache(hesscache, θ))
     else
         hess = (θ, args...) -> f.hess(θ, p, args...)
@@ -300,8 +301,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
                            for i in 1:num_cons]
         cons_h = function (θ)
             return map(1:num_cons) do i
-                FD.finite_difference_hessian(
-                    x -> cons(x)[i], θ,
+                FD.finite_difference_hessian(x -> cons(x)[i], θ,
                     updatecache(hess_cons_cache[i], θ))
             end
         end
@@ -323,8 +323,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
                 l
             end
             function (θ, σ, μ)
-                FD.finite_difference_hessian(
-                    (x) -> lag(x, σ, μ),
+                FD.finite_difference_hessian((x) -> lag(x, σ, μ),
                     θ,
                     updatecache(lag_hess_cache, θ))
             end
@@ -341,7 +340,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
+        cache::OptimizationBase.ReInitCache,
         adtype::AutoFiniteDiff, num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
     updatecache = (cache, x) -> (cache.xmm .= x; cache.xmp .= x; cache.xpm .= x; cache.xpp .= x; return cache)
@@ -357,8 +357,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
 
     if f.hess === nothing
         hesscache = FD.HessianCache(x, adtype.fdhtype)
-        hess = (θ, args...) -> FD.finite_difference_hessian!(
-            x -> _f(x, args...), θ,
+        hess = (θ, args...) -> FD.finite_difference_hessian!(x -> _f(x, args...), θ,
             updatecache(hesscache, θ))
     else
         hess = (θ, args...) -> f.hess(θ, p, args...)
@@ -411,8 +410,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
                            for i in 1:num_cons]
         cons_h = function (θ)
             return map(1:num_cons) do i
-                FD.finite_difference_hessian(
-                    x -> cons(x)[i], θ,
+                FD.finite_difference_hessian(x -> cons(x)[i], θ,
                     updatecache(hess_cons_cache[i], θ))
             end
         end
@@ -434,8 +432,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
                 l
             end
             function (θ, σ, μ)
-                FD.finite_difference_hessian(
-                    (x) -> lag(x, σ, μ),
+                FD.finite_difference_hessian((x) -> lag(x, σ, μ),
                     θ,
                     updatecache(lag_hess_cache, θ))
             end
@@ -451,6 +448,5 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
         cons_hess_prototype = f.cons_hess_prototype,
         lag_h, f.lag_hess_prototype)
 end
-
 
 end

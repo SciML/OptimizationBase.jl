@@ -1,4 +1,5 @@
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::AutoSparseReverseDiff,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
+        adtype::AutoSparseReverseDiff,
         p = SciMLBase.NullParameters(),
         num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
@@ -173,7 +174,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
+        cache::OptimizationBase.ReInitCache,
         adtype::AutoSparseReverseDiff, num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
 
@@ -371,9 +373,10 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, ca
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x, adtype::AutoSparseReverseDiff,
-    p = SciMLBase.NullParameters(),
-    num_cons = 0)
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x,
+        adtype::AutoSparseReverseDiff,
+        p = SciMLBase.NullParameters(),
+        num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
 
     chunksize = default_chunk_size(length(x))
@@ -387,8 +390,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             end
         else
             cfg = ReverseDiff.GradientConfig(x)
-            grad = (θ, args...) -> ReverseDiff.gradient(
-                x -> _f(x, args...),
+            grad = (θ, args...) -> ReverseDiff.gradient(x -> _f(x, args...),
                 θ,
                 cfg)
         end
@@ -511,8 +513,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
                 sparsity = conshess_sparsity[i]) for i in 1:num_cons]
             cons_h = function (θ, args...)
                 map(1:num_cons) do i
-                    SparseDiffTools.forwarddiff_color_jacobian(
-                        gs[i],
+                    SparseDiffTools.forwarddiff_color_jacobian(gs[i],
                         θ,
                         jaccfgs[i])
                 end
@@ -548,8 +549,9 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache,
-    adtype::AutoSparseReverseDiff, num_cons = 0)
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
+        cache::OptimizationBase.ReInitCache,
+        adtype::AutoSparseReverseDiff, num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
 
     chunksize = default_chunk_size(length(cache.u0))
@@ -565,8 +567,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
             end
         else
             cfg = ReverseDiff.GradientConfig(x)
-            grad = (θ, args...) -> ReverseDiff.gradient(
-                x -> _f(x, args...),
+            grad = (θ, args...) -> ReverseDiff.gradient(x -> _f(x, args...),
                 θ,
                 cfg)
         end
@@ -689,8 +690,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
                 sparsity = conshess_sparsity[i]) for i in 1:num_cons]
             cons_h = function (θ, args...)
                 map(1:num_cons) do i
-                    SparseDiffTools.forwarddiff_color_jacobian(
-                        gs[i],
+                    SparseDiffTools.forwarddiff_color_jacobian(gs[i],
                         θ,
                         jaccfgs[i])
                 end

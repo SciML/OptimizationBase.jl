@@ -1,5 +1,6 @@
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::AutoSparseFiniteDiff, p,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
+        adtype::AutoSparseFiniteDiff, p,
         num_cons = 0)
     if maximum(getfield.(methods(f.f), :nargs)) > 3
         error("$(string(adtype)) with SparseDiffTools does not support functions with more than 2 arguments")
@@ -124,7 +125,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
+        cache::OptimizationBase.ReInitCache,
         adtype::AutoSparseFiniteDiff, num_cons = 0)
     if maximum(getfield.(methods(f.f), :nargs)) > 3
         error("$(string(adtype)) with SparseDiffTools does not support functions with more than 2 arguments")
@@ -253,8 +255,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, ca
         lag_h, f.lag_hess_prototype)
 end
 
-
-function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x, adtype::AutoSparseFiniteDiff, p,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x,
+        adtype::AutoSparseFiniteDiff, p,
         num_cons = 0)
     if maximum(getfield.(methods(f.f), :nargs)) > 3
         error("$(string(adtype)) with SparseDiffTools does not support functions with more than 2 arguments")
@@ -279,8 +281,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             ForwardColorHesCache(_f, θ,
                 hess_colors,
                 hess_sparsity,
-                (res, θ) -> (res .= grad(
-                    θ,
+                (res, θ) -> (res .= grad(θ,
                     args...))))
     else
         hess = (θ, args...) -> f.hess(θ, cache.p, args...)
@@ -386,7 +387,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
+        cache::OptimizationBase.ReInitCache,
         adtype::AutoSparseFiniteDiff, num_cons = 0)
     if maximum(getfield.(methods(f.f), :nargs)) > 3
         error("$(string(adtype)) with SparseDiffTools does not support functions with more than 2 arguments")
@@ -410,8 +412,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
             ForwardColorHesCache(_f, θ,
                 hess_colors,
                 hess_sparsity,
-                (res, θ) -> (res .= grad(
-                    θ,
+                (res, θ) -> (res .= grad(θ,
                     args...))))
     else
         hess = (θ, args...) -> f.hess(θ, p, args...)

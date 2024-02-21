@@ -6,7 +6,8 @@ import OptimizationBase.ADTypes: AutoZygote
 isdefined(Base, :get_extension) ? (using Zygote, Zygote.ForwardDiff) :
 (using ..Zygote, ..Zygote.ForwardDiff)
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::AutoZygote, p,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
+        adtype::AutoZygote, p,
         num_cons = 0)
     _f = (θ, args...) -> f(θ, p, args...)[1]
     if f.grad === nothing
@@ -83,7 +84,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
+        cache::OptimizationBase.ReInitCache,
         adtype::AutoZygote, num_cons = 0)
     _f = (θ, args...) -> f(θ, cache.p, args...)[1]
     if f.grad === nothing
@@ -160,8 +162,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, ca
         lag_h, f.lag_hess_prototype)
 end
 
-
-function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x, adtype::AutoZygote, p,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x,
+        adtype::AutoZygote, p,
         num_cons = 0)
     _f = (θ, args...) -> f(θ, p, args...)[1]
     if f.grad === nothing
@@ -241,11 +243,12 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
+        cache::OptimizationBase.ReInitCache,
         adtype::AutoZygote, num_cons = 0)
     _f = (θ, args...) -> f(θ, cache.p, args...)[1]
     p = cache.p
-    
+
     if f.grad === nothing
         grad = function (θ, args...)
             val = Zygote.gradient(x -> _f(x, args...), θ)[1]
