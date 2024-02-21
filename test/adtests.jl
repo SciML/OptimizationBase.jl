@@ -607,17 +607,6 @@ optprob.hess(H2, x0)
     @test optprob.cons_j([5.0, 3.0]) ≈ [10.0 6.0; -0.149013 -0.958924] rtol = 1e-6
     @test Array.(optprob.cons_h(x0)) ≈ [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
 
-    cons = (x, p) -> [x[1]^2 + x[2]^2, x[2] * sin(x[1]) - x[1]]
-    optf = OptimizationFunction{false}(rosenbrock, OptimizationBase.AutoReverseDiff(true), cons = cons)
-    optprob = OptimizationBase.instantiate_function(optf, x0, OptimizationBase.AutoReverseDiff(true),
-        nothing, 2)
-
-    @test optprob.grad(x0) == G1
-    @test optprob.hess(x0) == H1
-    @test optprob.cons(x0) == [0.0, 0.0]
-    @test optprob.cons_j([5.0, 3.0]) ≈ [10.0 6.0; -0.149013 -0.958924] rtol = 1e-6
-    @test optprob.cons_h(x0) == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
-
     cons = (x, p) -> [x[1]^2 + x[2]^2]
     optf = OptimizationFunction{false}(rosenbrock, OptimizationBase.AutoSparseFiniteDiff(), cons = cons)
     optprob = OptimizationBase.instantiate_function(optf, x0, OptimizationBase.AutoSparseFiniteDiff(),
@@ -643,4 +632,50 @@ optprob.hess(H2, x0)
     @test optprob.cons_j([5.0, 3.0]) ≈ [10.0 6.0; -0.149013 -0.958924] rtol = 1e-6
     @test Array.(optprob.cons_h(x0)) ≈ [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
 
+    cons = (x, p) -> [x[1]^2 + x[2]^2]
+    optf = OptimizationFunction{false}(rosenbrock, OptimizationBase.AutoSparseReverseDiff(), cons = cons)
+    optprob = OptimizationBase.instantiate_function(optf, x0, OptimizationBase.AutoSparseReverseDiff(),
+        nothing, 1)
+    
+    @test optprob.grad(x0) == G1
+    @test optprob.hess(x0) == H1
+    
+    @test optprob.cons(x0) == [0.0]
+
+    @test optprob.cons_j([5.0, 3.0]) == [10.0, 6.0]
+
+    @test optprob.cons_h(x0) == [[2.0 0.0; 0.0 2.0]]
+    
+    cons = (x, p) -> [x[1]^2 + x[2]^2, x[2] * sin(x[1]) - x[1]]
+    optf = OptimizationFunction{false}(rosenbrock, OptimizationBase.AutoSparseReverseDiff(), cons = cons)
+    optprob = OptimizationBase.instantiate_function(optf, x0, OptimizationBase.AutoSparseReverseDiff(),
+        nothing, 2)
+
+    @test optprob.grad(x0) == G1
+    @test Array(optprob.hess(x0)) ≈ H1
+    @test optprob.cons(x0) == [0.0, 0.0]
+    @test optprob.cons_j([5.0, 3.0]) ≈ [10.0 6.0; -0.149013 -0.958924] rtol = 1e-6
+    @test Array.(optprob.cons_h(x0)) ≈ [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
+
+    cons = (x, p) -> [x[1]^2 + x[2]^2]
+    optf = OptimizationFunction{false}(rosenbrock, OptimizationBase.AutoSparseReverseDiff(true), cons = cons)
+    optprob = OptimizationBase.instantiate_function(optf, x0, OptimizationBase.AutoSparseReverseDiff(true),
+        nothing, 1)
+    
+    @test optprob.grad(x0) == G1
+    @test optprob.hess(x0) == H1
+    @test optprob.cons(x0) == [0.0, 0.0]
+    @test optprob.cons_j([5.0, 3.0]) ≈ [10.0 6.0; -0.149013 -0.958924] rtol = 1e-6
+    @test Array.(optprob.cons_h(x0)) ≈ [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
+
+    cons = (x, p) -> [x[1]^2 + x[2]^2, x[2] * sin(x[1]) - x[1]]
+    optf = OptimizationFunction{false}(rosenbrock, OptimizationBase.AutoSparseReverseDiff(true), cons = cons)
+    optprob = OptimizationBase.instantiate_function(optf, x0, OptimizationBase.AutoSparseReverseDiff(true),
+        nothing, 2)
+
+    @test optprob.grad(x0) == G1
+    @test Array(optprob.hess(x0)) ≈ H1
+    @test optprob.cons(x0) == [0.0, 0.0]
+    @test optprob.cons_j([5.0, 3.0]) ≈ [10.0 6.0; -0.149013 -0.958924] rtol = 1e-6
+    @test Array.(optprob.cons_h(x0)) ≈ [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
 end
