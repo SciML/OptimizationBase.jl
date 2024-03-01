@@ -6,7 +6,7 @@ import OptimizationBase.LinearAlgebra: I
 import OptimizationBase.ADTypes: AutoEnzyme
 isdefined(Base, :get_extension) ? (using Enzyme) : (using ..Enzyme)
 
-@inline function firstapply(f::F, θ, p, args...) where {F}
+@inline function firstapply(f::F, θ::Vector{X}, p::P, args...)::X where {F, X, P}
     res = f(θ, p, args...)
     if isa(res, AbstractFloat)
         res
@@ -413,7 +413,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
         adtype::AutoEnzyme,
         num_cons = 0)
     p = cache.p
-
+    x = cache.u0
     if f.grad === nothing
         res = zeros(eltype(x), size(x))
         grad = let res = res
