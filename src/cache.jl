@@ -24,7 +24,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data;
         kwargs...)
     reinit_cache = OptimizationBase.ReInitCache(prob.u0, prob.p)
     num_cons = prob.ucons === nothing ? 0 : length(prob.ucons)
-    f = Optimization.instantiate_function(prob.f, reinit_cache, prob.f.adtype, num_cons)
+    f = OptimizationBase.instantiate_function(prob.f, reinit_cache, prob.f.adtype, num_cons)
     return OptimizationCache(f, reinit_cache, prob.lb, prob.ub, prob.lcons,
         prob.ucons, prob.sense,
         opt, data, progress, callback,
