@@ -4,9 +4,10 @@ import OptimizationBase, OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.LinearAlgebra: I
 import OptimizationBase.ADTypes: AutoEnzyme
+using OptimizationBase.StaticArraysCore
 isdefined(Base, :get_extension) ? (using Enzyme) : (using ..Enzyme)
 
-@inline function firstapply(f::F, θ::Vector{X}, p::P, args...)::X where {F, X, P}
+@inline function firstapply(f, θ, p, args...)
     res = f(θ, p, args...)
     if isa(res, AbstractFloat)
         res
@@ -275,19 +276,14 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         adtype::AutoEnzyme, p,
         num_cons = 0)
     if f.grad === nothing
-        res = zeros(eltype(x), size(x))
-        grad = let res = res
-            function (θ, args...)
-                res .= zero(eltype(res))
-                Enzyme.autodiff(Enzyme.Reverse,
+        grad = function (θ, args...)
+                return Enzyme.autodiff(Enzyme.Reverse,
                     Const(firstapply),
                     Active,
                     Const(f.f),
-                    Enzyme.Duplicated(θ, res),
+                    Active(θ),
                     Const(p),
-                    args...)
-                return res
-            end
+                    args...)[1][2]
         end
     else
         grad = (θ, args...) -> f.grad(θ, p, args...)
@@ -305,10 +301,16 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             return nothing
         end
         function hess(θ, args...)
-            vdθ = Tuple((Array(r) for r in eachrow(I(length(θ)) * 1.0)))
-
-            bθ = zeros(length(θ))
-            vdbθ = Tuple(zeros(length(θ)) for i in eachindex(θ))
+            n = length(θ)
+            if θ isa SArray
+                vdθ = Tuple((SVector{n}(r) for r in eachrow(I(n) * 1.0)))
+                bθ = SVector{n}(zeros(eltype(θ), n))
+                vdbθ = Tuple((SVector{n}(zeros(eltype(θ), length(θ)))) for i in eachindex(θ))
+            else
+                vdθ = Tuple((Array(r) for r in eachrow(I(length(θ)) * 1.0)))
+                bθ = zeros(eltype(θ), length(θ))
+                vdbθ = Tuple(zeros(eltype(θ), length(θ)) for i in eachindex(θ))
+            end
 
             Enzyme.autodiff(Enzyme.Forward,
                 g,
@@ -318,7 +320,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
                 Const(p),
                 args...)
 
-            reduce(vcat, [reshape(vdbθ[i], (1, length(vdbθ[i]))) for i in eachindex(θ)])
+            return vdbθ #reduce(vcat, [reshape(vdbθ[i], (1, length(vdbθ[i]))) for i in eachindex(θ)])
         end
     else
         hess = (θ, args...) -> f.hess(θ, p, args...)

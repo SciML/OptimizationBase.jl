@@ -8,7 +8,7 @@ if !isdefined(Base, :get_extension)
     using Requires
 end
 
-using ArrayInterface, Base.Iterators, SparseArrays, LinearAlgebra
+using ArrayInterface, Base.Iterators, SparseArrays, LinearAlgebra, StaticArraysCore
 
 import SciMLBase: OptimizationProblem,
     OptimizationFunction, ObjSense,
