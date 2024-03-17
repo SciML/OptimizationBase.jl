@@ -455,13 +455,15 @@ hess_colors = f.hess_colorvec
 if f.hess === nothing
     hess_sparsity = Symbolics.hessian_sparsity(_f, x)
     hess_colors = matrix_colors(tril(hess_sparsity))
-    hess = (res, θ, args...) -> numauto_color_hessian!(res, x -> _f(x, args...), θ,
-        ForwardColorHesCache(_f, x,
-            hess_colors,
-            hess_sparsity,
-            (res, θ) -> grad(res,
-                θ,
-                args...)))
+    # hess = (res, θ, args...) -> numauto_color_hessian!(res, x -> _f(x, args...), θ,
+    #     ForwardColorHesCache(_f, x,
+    #         hess_colors,
+    #         hess_sparsity,
+    #         (res, θ) -> grad(res,
+    #             θ,
+    #             args...)))
+    hess = (res, θ, args...) -> PolysterForwardDiff.threaded_jacobian!(grad(res, θ, args...), θ)
+                
 else
     hess = (H, θ, args...) -> f.hess(H, θ, p, args...)
 end
