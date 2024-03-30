@@ -1,3 +1,5 @@
+using DifferentiationInterface
+
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         adtype::AutoSparseForwardDiff{_chunksize}, p,
         num_cons = 0) where {_chunksize}
@@ -443,9 +445,8 @@ chunksize = _chunksize === nothing ? default_chunk_size(length(x)) : _chunksize
 _f = (θ, args...) -> first(f.f(θ, p, args...))
 
 if f.grad === nothing
-    gradcfg = ForwardDiff.GradientConfig(_f, x, ForwardDiff.Chunk{chunksize}())
-    grad = (res, θ, args...) -> PolyesterForwardDiff.threaded_gradient!(res, x -> _f(x, args...), θ,
-        gradcfg, Val{false}())
+    grad = (res, θ, args...) -> gradient!!(x -> _f(x, args...),res, adtype, θ,
+        args...)
 else
     grad = (G, θ, args...) -> f.grad(G, θ, p, args...)
 end
@@ -453,16 +454,7 @@ end
 hess_sparsity = f.hess_prototype
 hess_colors = f.hess_colorvec
 if f.hess === nothing
-    hess_sparsity = Symbolics.hessian_sparsity(_f, x)
-    hess_colors = matrix_colors(tril(hess_sparsity))
-    # hess = (res, θ, args...) -> numauto_color_hessian!(res, x -> _f(x, args...), θ,
-    #     ForwardColorHesCache(_f, x,
-    #         hess_colors,
-    #         hess_sparsity,
-    #         (res, θ) -> grad(res,
-    #             θ,
-    #             args...)))
-    hess = (res, θ, args...) -> PolysterForwardDiff.threaded_jacobian!(grad(res, θ, args...), θ)
+    hess = (res, θ, args...) -> hessian!!(x -> _f(x, args...), res, adtype, θ, args...)
                 
 else
     hess = (H, θ, args...) -> f.hess(H, θ, p, args...)
