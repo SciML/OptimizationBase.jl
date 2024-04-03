@@ -419,7 +419,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
     end
 
     if f.lag_h === nothing
-        lag_h = nothing # Consider implementing this
+        lag_h = nothing
     else
         lag_h = (θ, σ, μ) -> f.lag_h(θ, σ, μ, p)
     end
