@@ -3,7 +3,6 @@ module OptimizationBase
 using DocStringExtensions
 using Reexport
 @reexport using SciMLBase, ADTypes
-
 if !isdefined(Base, :get_extension)
     using Requires
 end
@@ -24,7 +23,7 @@ const DEFAULT_DATA = Iterators.cycle((NullData(),))
 Base.iterate(::NullData, i = 1) = nothing
 Base.length(::NullData) = 0
 
-include("adtypes.jl")
+# include("adtypes.jl")
 include("cache.jl")
 include("function.jl")
 
