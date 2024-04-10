@@ -1,4 +1,4 @@
-using OptimizationBase, Test, SparseArrays, Symbolics
+using OptimizationBase, DifferentiationInterface, Test, SparseArrays, Symbolics
 using ForwardDiff, Zygote, ReverseDiff, FiniteDiff, Tracker
 using ModelingToolkit, Enzyme, Random
 
