@@ -4,6 +4,7 @@ module OptimizationDIExt
 import OptimizationBase, OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.LinearAlgebra: I
+import DifferentiationInterface
 import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_jacobian, gradient!!, hessian!!, jacobian!!
 using ADTypes
 
@@ -22,7 +23,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::ADTypes.AbstractADT
     hess_sparsity = f.hess_prototype
     hess_colors = f.hess_colorvec
     if f.hess === nothing
-        extras_hess = prepare_hessian(_f, adtype, x)
+        extras_hess = prepare_hessian(_f, DifferentiationInterface.SecondOrder(adtype), x) #placeholder logic, can be made much better
         function hess(res, θ, args...)
             hessian!!(_f, res, adtype, θ, extras_hess)
         end
@@ -32,10 +33,6 @@ function OptimizationBase.instantiate_function(f, x, adtype::ADTypes.AbstractADT
 
     if f.hv === nothing
         hv = function (H, θ, v, args...)
-            # _θ = ForwardDiff.Dual.(θ, v)
-            # res = similar(_θ)
-            # grad(res, _θ, args...)
-            # H .= getindex.(ForwardDiff.partials.(res), 1)
             res = zeros(length(θ), length(θ))
             hess(res, θ, args...)
             H .= res * v
@@ -66,7 +63,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::ADTypes.AbstractADT
     conshess_colors = f.cons_hess_colorvec
     if cons !== nothing && f.cons_h === nothing
         fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
-        extras_cons_hess = prepare_hessian.(fncs, Ref(adtype), Ref(x))
+        extras_cons_hess = prepare_hessian.(fncs, Ref(DifferentiationInterface.SecondOrder(adtype)), Ref(x))
 
         function cons_h(H, θ)
             for i in 1:num_cons
@@ -110,9 +107,9 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
     hess_sparsity = f.hess_prototype
     hess_colors = f.hess_colorvec
     if f.hess === nothing
-        extras_hess = prepare_hessian(_f, adtype, x)
+        extras_hess = prepare_hessian(_f, DifferentiationInterface.SecondOrder(adtype), x) #placeholder logic, can be made much better
         function hess(res, θ, args...)
-            hessian!!(_f, res, adtype, θ, extras_hess)
+            hessian!!(_f, res, DifferentiationInterface.SecondOrder(adtype), θ, extras_hess)
         end
     else
         hess = (H, θ, args...) -> f.hess(H, θ, p, args...)
@@ -154,7 +151,7 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
     conshess_colors = f.cons_hess_colorvec
     if cons !== nothing && f.cons_h === nothing
         fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
-        extras_cons_hess = prepare_hessian.(fncs, Ref(adtype), Ref(x))
+        extras_cons_hess = prepare_hessian.(fncs, Ref(DifferentiationInterface.SecondOrder(adtype)), Ref(x))
 
         function cons_h(H, θ)
             for i in 1:num_cons
