@@ -148,7 +148,11 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         hess_prototype = f.hess_prototype,
         cons_jac_prototype = f.cons_jac_prototype,
         cons_hess_prototype = f.cons_hess_prototype,
-        lag_h, f.lag_hess_prototype)
+        lag_h = lag_h,
+        lag_hess_prototype = f.lag_hess_prototype,
+        sys = f.sys,
+        expr = f.expr,
+        cons_expr = f.cons_expr)
 end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
@@ -285,7 +289,11 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
         hess_prototype = f.hess_prototype,
         cons_jac_prototype = f.cons_jac_prototype,
         cons_hess_prototype = f.cons_hess_prototype,
-        lag_h, f.lag_hess_prototype)
+        lag_h = lag_h,
+        lag_hess_prototype = f.lag_hess_prototype,
+        sys = f.sys,
+        expr = f.expr,
+        cons_expr = f.cons_expr)
 end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x,
@@ -422,7 +430,11 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         hess_prototype = f.hess_prototype,
         cons_jac_prototype = f.cons_jac_prototype,
         cons_hess_prototype = f.cons_hess_prototype,
-        lag_h, f.lag_hess_prototype)
+        lag_h = lag_h,
+        lag_hess_prototype = f.lag_hess_prototype,
+        sys = f.sys,
+        expr = f.expr,
+        cons_expr = f.cons_expr)
 end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
@@ -559,7 +571,11 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
         hess_prototype = f.hess_prototype,
         cons_jac_prototype = f.cons_jac_prototype,
         cons_hess_prototype = f.cons_hess_prototype,
-        lag_h, f.lag_hess_prototype)
+        lag_h = lag_h,
+        lag_hess_prototype = f.lag_hess_prototype,
+        sys = f.sys,
+        expr = f.expr,
+        cons_expr = f.cons_expr)
 end
 
 end
