@@ -1,3 +1,4 @@
+import Symbolics: ≲, ~
 struct OptimizationCache{F, RC, LB, UB, LC, UC, S, O, D, P, C} <:
        SciMLBase.AbstractOptimizationCache
     f::F
@@ -30,7 +31,6 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
     if (f.sys === nothing || f.sys isa SymbolicIndexingInterface.SymbolCache{Nothing, Nothing, Nothing}) && mtkize
         try
             vars = ArrayInterface.restructure(prob.u0, [variable(:x, i) for i in eachindex(prob.u0)])
-            @show typeof(vars)
             params = if prob.p isa SciMLBase.NullParameters
                 []
             elseif prob.p isa MTK.MTKParameters
@@ -38,12 +38,11 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
             else
                 ArrayInterface.restructure(p, [variable(:α, i) for i in eachindex(p)])
             end
-            @show f.f
             obj_expr = f.f(vars, params)
         
             if SciMLBase.isinplace(prob) && !isnothing(prob.f.cons)
-                lhs = Array{Num}(undef, num_cons)
-                f.cons(lhs, vars, params)
+                lhs = Array{Symbolics.Num}(undef, num_cons)
+                f.cons(lhs, vars)
                 cons = Union{Equation, Inequality}[]
         
                 if !isnothing(prob.lcons)
@@ -71,6 +70,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
                     Ensure you pass equal bounds (the scalar that the constraint should evaluate to) for equality constraints
                     or pass the lower and upper bounds for inequality constraints."))
                 end
+                cons_expr = lhs
             elseif !isnothing(prob.f.cons)
                 cons_expr = f.cons(vars, params)
             else
@@ -102,8 +102,9 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
     end
 
     if !isnothing(cons_expr)
-        cons_expr = propagate_curvature(propagate_sign(cons_expr))
-        @show getcurvature(cons_expr)
+        cons_expr = cons_expr .|> Symbolics.unwrap
+        cons_expr = propagate_curvature.(propagate_sign.(cons_expr))
+        @show getcurvature.(cons_expr)
     end
 
     return OptimizationCache(f, reinit_cache, prob.lb, prob.ub, prob.lcons,
