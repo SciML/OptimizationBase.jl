@@ -1,11 +1,10 @@
 module OptimizationDIExt
-       
 
 import OptimizationBase, OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.LinearAlgebra: I
 import DifferentiationInterface
-import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_jacobian, gradient!!, hessian!!, jacobian!!
+import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_jacobian, gradient!, hessian!, jacobian!
 using ADTypes
 
 function OptimizationBase.instantiate_function(f, x, adtype::ADTypes.AbstractADType, p = SciMLBase.NullParameters(), num_cons = 0)
@@ -14,7 +13,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::ADTypes.AbstractADT
     if f.grad === nothing
         extras_grad = prepare_gradient(_f, adtype, x)
         function grad(res, θ)
-            gradient!!(_f, res, adtype, θ, extras_grad)
+            gradient!(_f, res, adtype, θ, extras_grad)
         end
     else
         grad = (G, θ, args...) -> f.grad(G, θ, p, args...)
@@ -25,7 +24,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::ADTypes.AbstractADT
     if f.hess === nothing
         extras_hess = prepare_hessian(_f, DifferentiationInterface.SecondOrder(adtype), x) #placeholder logic, can be made much better
         function hess(res, θ, args...)
-            hessian!!(_f, res, adtype, θ, extras_hess)
+            hessian!(_f, res, adtype, θ, extras_hess)
         end
     else
         hess = (H, θ, args...) -> f.hess(H, θ, p, args...)
@@ -53,7 +52,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::ADTypes.AbstractADT
     if cons !== nothing && f.cons_j === nothing
         extras_jac = prepare_jacobian(cons_oop, adtype, x)
         cons_j = function (J, θ)
-            jacobian!!(cons_oop, J, adtype, θ, extras_jac)
+            jacobian!(cons_oop, J, adtype, θ, extras_jac)
         end
     else
         cons_j = (J, θ) -> f.cons_j(J, θ, p)
@@ -67,7 +66,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::ADTypes.AbstractADT
 
         function cons_h(H, θ)
             for i in 1:num_cons
-                hessian!!(cons_oop, H[i], adtype, θ, extras_cons_hess[i])
+                hessian!(fncs[i], H[i], adtype, θ, extras_cons_hess[i])
             end
         end
     else
@@ -98,7 +97,7 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
     if f.grad === nothing
         extras_grad = prepare_gradient(_f, adtype, x)
         function grad(res, θ)
-            gradient!!(_f, res, adtype, θ, extras_grad)
+            gradient!(_f, res, adtype, θ, extras_grad)
         end
     else
         grad = (G, θ, args...) -> f.grad(G, θ, p, args...)
@@ -109,7 +108,7 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
     if f.hess === nothing
         extras_hess = prepare_hessian(_f, DifferentiationInterface.SecondOrder(adtype), x) #placeholder logic, can be made much better
         function hess(res, θ, args...)
-            hessian!!(_f, res, DifferentiationInterface.SecondOrder(adtype), θ, extras_hess)
+            hessian!(_f, res, DifferentiationInterface.SecondOrder(adtype), θ, extras_hess)
         end
     else
         hess = (H, θ, args...) -> f.hess(H, θ, p, args...)
@@ -141,7 +140,7 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
     if cons !== nothing && f.cons_j === nothing
         extras_jac = prepare_jacobian(cons_oop, adtype, x)
         cons_j = function (J, θ)
-            jacobian!!(cons_oop, J, adtype, θ, extras_jac)
+            jacobian!(cons_oop, J, adtype, θ, extras_jac)
         end
     else
         cons_j = (J, θ) -> f.cons_j(J, θ, p)
@@ -155,7 +154,7 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
 
         function cons_h(H, θ)
             for i in 1:num_cons
-                hessian!!(cons_oop, H[i], adtype, θ, extras_cons_hess[i])
+                hessian!(fncs[i], H[i], adtype, θ, extras_cons_hess[i])
             end
         end
     else
