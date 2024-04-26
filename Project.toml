@@ -35,7 +35,7 @@ OptimizationTrackerExt = "Tracker"
 OptimizationZygoteExt = "Zygote"
 
 [compat]
-ADTypes = "0.2.5"
+ADTypes = "0.2.5, 1"
 ArrayInterface = "7.6"
 DocStringExtensions = "0.9"
 Enzyme = "0.11.11"
