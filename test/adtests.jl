@@ -1,6 +1,6 @@
-using OptimizationBase, DifferentiationInterface, Test, SparseArrays, Symbolics
-using ForwardDiff, Zygote, ReverseDiff, FiniteDiff, Tracker
-using ModelingToolkit, Enzyme, Random
+using OptimizationBase, Zygote, DifferentiationInterface, Test, SparseArrays, Symbolics
+using ForwardDiff, Zygote, ReverseDiff, FiniteDiff, SparseConnectivityTracer
+using Enzyme, Random
 
 x0 = zeros(2)
 rosenbrock(x, p = nothing) = (1 - x[1])^2 + 100 * (x[2] - x[1]^2)^2
@@ -339,6 +339,7 @@ optprob1 = OptimizationBase.instantiate_function(optf, x0,
     nothing, 2)
 @test optprob1.hess_prototype == sparse([0.0 0.0; 0.0 0.0]) # make sure it's still using it
 optprob1.hess(sH, [5.0, 3.0])
+
 @test all(isapprox(sH, [28802.0 -2000.0; -2000.0 200.0]; rtol = 1e-3))
 @test optprob1.cons_jac_prototype == sparse([0.0 0.0; 0.0 0.0]) # make sure it's still using it
 optprob1.cons_j(sJ, [5.0, 3.0])
@@ -366,13 +367,18 @@ optprob2.cons_h(sH3, [5.0, 3.0])
     [2.8767727327346804 0.2836621681849162; 0.2836621681849162 -6.622738308376736e-9]
 ]
 
+using SparseConnectivityTracer, Symbolics
+import DifferentiationInterface as DI
 using SparseDiffTools
 
+coloring_algorithm = DI.GreedyColoringAlgorithm()
+sparsity_detector = DI.SymbolicsSparsityDetector()
+
 optf = OptimizationFunction(rosenbrock,
-    OptimizationBase.AutoSparseFiniteDiff(),
+    ADTypes.AutoSparse(AutoFiniteDiff(); sparsity_detector, coloring_algorithm),
     cons = con2_c)
 optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoSparseFiniteDiff(),
+ADTypes.AutoSparse(AutoFiniteDiff(); sparsity_detector, coloring_algorithm),
     nothing, 2)
 G2 = Array{Float64}(undef, 2)
 optprob.grad(G2, x0)
@@ -438,7 +444,7 @@ optf = OptimizationFunction(rosenbrock,
     OptimizationBase.AutoSparseReverseDiff(),
     cons = con2_c)
 optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoSparseReverseDiff(true),
+    OptimizationBase.AutoSparseReverseDiff(compile = true),
     nothing, 2)
 G2 = Array{Float64}(undef, 2)
 optprob.grad(G2, x0)
