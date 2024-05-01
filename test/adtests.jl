@@ -1,5 +1,5 @@
 using OptimizationBase, Zygote, DifferentiationInterface, Test, SparseArrays, Symbolics
-using ForwardDiff, Zygote, ReverseDiff, FiniteDiff, SparseConnectivityTracer
+using ForwardDiff, Zygote, ReverseDiff, FiniteDiff, OptimizationBase.SparseConnectivityTracer
 using Enzyme, Random
 
 x0 = zeros(2)
