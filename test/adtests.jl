@@ -1,6 +1,6 @@
 using OptimizationBase, Zygote, DifferentiationInterface, Test, SparseArrays, Symbolics
 using ForwardDiff, Zygote, ReverseDiff, FiniteDiff, OptimizationBase.SparseConnectivityTracer
-using Enzyme, Random
+using Enzyme, ModelingToolkit, Random
 
 x0 = zeros(2)
 rosenbrock(x, p = nothing) = (1 - x[1])^2 + 100 * (x[2] - x[1]^2)^2
