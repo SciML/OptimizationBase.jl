@@ -14,7 +14,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         grad = function (res, θ, args...)
             val = Zygote.gradient(x -> _f(x, args...), θ)[1]
             if val === nothing
-                res .= zero(typeof(θ))
+                res .= zero(eltype(θ))
             else
                 res .= val
             end
@@ -92,7 +92,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
         grad = function (res, θ, args...)
             val = Zygote.gradient(x -> _f(x, args...), θ)[1]
             if val === nothing
-                res .= zero(typeof(θ))
+                res .= zero(eltype(θ))
             else
                 res .= val
             end
@@ -170,7 +170,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         grad = function (θ, args...)
             val = Zygote.gradient(x -> _f(x, args...), θ)[1]
             if val === nothing
-                return zero(typeof(θ))
+                return zero(eltype(θ))
             else
                 return val
             end
@@ -253,7 +253,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
         grad = function (θ, args...)
             val = Zygote.gradient(x -> _f(x, args...), θ)[1]
             if val === nothing
-                return zero(typeof(θ))
+                return zero(eltype(θ))
             else
                 return val
             end
