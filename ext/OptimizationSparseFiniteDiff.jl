@@ -1,7 +1,7 @@
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
-        adtype::AutoSparse(<:AutoFiniteDiff), p,
-        num_cons = 0)
+        adtype::AutoSparse{<:AutoFiniteDiff, S, C}, p,
+        num_cons = 0) where {S, C}
     if maximum(getfield.(methods(f.f), :nargs)) > 3
         error("$(string(adtype)) with SparseDiffTools does not support functions with more than 2 arguments")
     end
@@ -127,7 +127,7 @@ end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
         cache::OptimizationBase.ReInitCache,
-        adtype::AutoSparse(<:AutoFiniteDiff), num_cons = 0)
+        adtype::AutoSparse{<:AutoFiniteDiff, S, C}, num_cons = 0) where {S, C}
     if maximum(getfield.(methods(f.f), :nargs)) > 3
         error("$(string(adtype)) with SparseDiffTools does not support functions with more than 2 arguments")
     end
@@ -258,8 +258,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
 end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x,
-        adtype::AutoSparse(<:AutoFiniteDiff), p,
-        num_cons = 0)
+        adtype::AutoSparse{<:AutoFiniteDiff, S, C}, p,
+        num_cons = 0) where {S, C}
     if maximum(getfield.(methods(f.f), :nargs)) > 3
         error("$(string(adtype)) with SparseDiffTools does not support functions with more than 2 arguments")
     end
@@ -391,7 +391,7 @@ end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
         cache::OptimizationBase.ReInitCache,
-        adtype::AutoSparse(<:AutoFiniteDiff), num_cons = 0)
+        adtype::AutoSparse{<:AutoFiniteDiff, S, C}, num_cons = 0) where {S, C}
     if maximum(getfield.(methods(f.f), :nargs)) > 3
         error("$(string(adtype)) with SparseDiffTools does not support functions with more than 2 arguments")
     end

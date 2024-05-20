@@ -3,11 +3,11 @@ module OptimizationMTKExt
 import OptimizationBase, OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase
 import OptimizationBase.SciMLBase: OptimizationFunction
-import OptimizationBase.ADTypes: AutoModelingToolkit
+import OptimizationBase.ADTypes: AutoModelingToolkit, AutoSymbolics, AutoSparse
 isdefined(Base, :get_extension) ? (using ModelingToolkit) : (using ..ModelingToolkit)
 
-function OptimizationBase.instantiate_function(f, x, adtype::AutoSparse{<:AutoSymbolics}, p,
-        num_cons = 0)
+function OptimizationBase.instantiate_function(f, x, adtype::AutoSparse{<:AutoSymbolics, S, C}, p,
+        num_cons = 0) where {S, C}
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, x, p;
@@ -17,8 +17,8 @@ function OptimizationBase.instantiate_function(f, x, adtype::AutoSparse{<:AutoSy
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
     f = OptimizationProblem(sys, x, p, grad = true, hess = true,
-        sparse = adtype.obj_sparse, cons_j = true, cons_h = true,
-        cons_sparse = adtype.cons_sparse).f
+        sparse = false, cons_j = true, cons_h = true,
+        cons_sparse = false).f
 
     grad = (G, θ, args...) -> f.grad(G, θ, p, args...)
 
@@ -53,7 +53,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::AutoSparse{<:AutoSy
 end
 
 function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInitCache,
-        adtype::AutoSparse{<:AutoSymbolics}, num_cons = 0)
+        adtype::AutoSparse{<:AutoSymbolics, S, C}, num_cons = 0) where {S, C}
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, cache.u0,
@@ -64,8 +64,8 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
     f = OptimizationProblem(sys, cache.u0, cache.p, grad = true, hess = true,
-        sparse = adtype.obj_sparse, cons_j = true, cons_h = true,
-        cons_sparse = adtype.cons_sparse).f
+        sparse = false, cons_j = true, cons_h = true,
+        cons_sparse = false).f
 
     grad = (G, θ, args...) -> f.grad(G, θ, cache.p, args...)
 

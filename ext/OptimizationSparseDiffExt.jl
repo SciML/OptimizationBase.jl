@@ -2,8 +2,7 @@ module OptimizationSparseDiffExt
 
 import OptimizationBase, OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase: OptimizationFunction
-import OptimizationBase.ADTypes: AutoSparseForwardDiff,
-    AutoSparseFiniteDiff, AutoSparseReverseDiff
+import OptimizationBase.ADTypes: AutoSparse, AutoFiniteDiff, AutoForwardDiff, AutoReverseDiff
 using OptimizationBase.LinearAlgebra, ReverseDiff
 isdefined(Base, :get_extension) ?
 (using SparseDiffTools,
