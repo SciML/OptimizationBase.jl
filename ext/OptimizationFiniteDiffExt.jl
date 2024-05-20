@@ -16,7 +16,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
 
     if f.grad === nothing
         gradcache = FD.GradientCache(x, x, adtype.fdtype)
-        grad = (res, θ, args...) -> FD.finite_difference_gradient!(res, x -> _f(x, args...),
+        grad = (res, θ, args...) -> FD.finite_difference_gradient!(
+            res, x -> _f(x, args...),
             θ, gradcache)
     else
         grad = (G, θ, args...) -> f.grad(G, θ, p, args...)
@@ -125,7 +126,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
 
     if f.grad === nothing
         gradcache = FD.GradientCache(cache.u0, cache.u0, adtype.fdtype)
-        grad = (res, θ, args...) -> FD.finite_difference_gradient!(res, x -> _f(x, args...),
+        grad = (res, θ, args...) -> FD.finite_difference_gradient!(
+            res, x -> _f(x, args...),
             θ, gradcache)
     else
         grad = (G, θ, args...) -> f.grad(G, θ, cache.p, args...)

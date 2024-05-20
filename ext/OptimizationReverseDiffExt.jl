@@ -49,7 +49,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
             xdual = ForwardDiff.Dual{
                 typeof(T),
                 eltype(x),
-                chunksize,
+                chunksize
             }.(x, Ref(ForwardDiff.Partials((ones(eltype(x), chunksize)...,))))
             h_tape = ReverseDiff.GradientTape(_f, xdual)
             htape = ReverseDiff.compile(h_tape)
@@ -119,9 +119,9 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
             end
             gs = [x -> grad_cons(x, conshtapes[i]) for i in 1:num_cons]
             jaccfgs = [ForwardDiff.JacobianConfig(gs[i],
-                x,
-                ForwardDiff.Chunk{chunksize}(),
-                T) for i in 1:num_cons]
+                           x,
+                           ForwardDiff.Chunk{chunksize}(),
+                           T) for i in 1:num_cons]
             cons_h = function (res, θ)
                 for i in 1:num_cons
                     ForwardDiff.jacobian!(res[i], gs[i], θ, jaccfgs[i], Val{false}())
@@ -182,7 +182,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
             xdual = ForwardDiff.Dual{
                 typeof(T),
                 eltype(cache.u0),
-                chunksize,
+                chunksize
             }.(cache.u0, Ref(ForwardDiff.Partials((ones(eltype(cache.u0), chunksize)...,))))
             h_tape = ReverseDiff.GradientTape(_f, xdual)
             htape = ReverseDiff.compile(h_tape)
@@ -255,9 +255,9 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
             end
             gs = [x -> grad_cons(x, conshtapes[i]) for i in 1:num_cons]
             jaccfgs = [ForwardDiff.JacobianConfig(gs[i],
-                cache.u0,
-                ForwardDiff.Chunk{chunksize}(),
-                T) for i in 1:num_cons]
+                           cache.u0,
+                           ForwardDiff.Chunk{chunksize}(),
+                           T) for i in 1:num_cons]
             cons_h = function (res, θ)
                 for i in 1:num_cons
                     ForwardDiff.jacobian!(res[i], gs[i], θ, jaccfgs[i], Val{false}())
@@ -319,7 +319,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             xdual = ForwardDiff.Dual{
                 typeof(T),
                 eltype(x),
-                chunksize,
+                chunksize
             }.(x, Ref(ForwardDiff.Partials((ones(eltype(x), chunksize)...,))))
             h_tape = ReverseDiff.GradientTape(_f, xdual)
             htape = ReverseDiff.compile(h_tape)
@@ -393,9 +393,9 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             end
             gs = [x -> grad_cons(x, conshtapes[i]) for i in 1:num_cons]
             jaccfgs = [ForwardDiff.JacobianConfig(gs[i],
-                x,
-                ForwardDiff.Chunk{chunksize}(),
-                T) for i in 1:num_cons]
+                           x,
+                           ForwardDiff.Chunk{chunksize}(),
+                           T) for i in 1:num_cons]
             cons_h = function (θ)
                 map(1:num_cons) do i
                     ForwardDiff.jacobian(gs[i], θ, jaccfgs[i], Val{false}())
@@ -456,7 +456,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
             xdual = ForwardDiff.Dual{
                 typeof(T),
                 eltype(x),
-                chunksize,
+                chunksize
             }.(x, Ref(ForwardDiff.Partials((ones(eltype(x), chunksize)...,))))
             h_tape = ReverseDiff.GradientTape(_f, xdual)
             htape = ReverseDiff.compile(h_tape)
@@ -530,9 +530,9 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
             end
             gs = [x -> grad_cons(x, conshtapes[i]) for i in 1:num_cons]
             jaccfgs = [ForwardDiff.JacobianConfig(gs[i],
-                x,
-                ForwardDiff.Chunk{chunksize}(),
-                T) for i in 1:num_cons]
+                           x,
+                           ForwardDiff.Chunk{chunksize}(),
+                           T) for i in 1:num_cons]
             cons_h = function (θ)
                 map(1:num_cons) do i
                     ForwardDiff.jacobian(gs[i], θ, jaccfgs[i], Val{false}())

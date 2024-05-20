@@ -6,7 +6,7 @@ import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.ADTypes: AutoModelingToolkit, AutoSymbolics, AutoSparse
 isdefined(Base, :get_extension) ? (using ModelingToolkit) : (using ..ModelingToolkit)
 
-function OptimizationBase.ADTypes.AutoModelingToolkit(sparse = false, cons_sparse = false) 
+function OptimizationBase.ADTypes.AutoModelingToolkit(sparse = false, cons_sparse = false)
     if sparse || cons_sparse
         return AutoSparse(AutoSymbolics())
     else
@@ -14,7 +14,8 @@ function OptimizationBase.ADTypes.AutoModelingToolkit(sparse = false, cons_spars
     end
 end
 
-function OptimizationBase.instantiate_function(f, x, adtype::AutoSparse{<:AutoSymbolics, S, C}, p,
+function OptimizationBase.instantiate_function(
+        f, x, adtype::AutoSparse{<:AutoSymbolics, S, C}, p,
         num_cons = 0) where {S, C}
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
@@ -108,7 +109,7 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
 end
 
 function OptimizationBase.instantiate_function(f, x, adtype::AutoSymbolics, p,
-    num_cons = 0)
+        num_cons = 0)
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, x, p;
@@ -154,7 +155,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::AutoSymbolics, p,
 end
 
 function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInitCache,
-    adtype::AutoSymbolics, num_cons = 0)
+        adtype::AutoSymbolics, num_cons = 0)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, cache.u0,

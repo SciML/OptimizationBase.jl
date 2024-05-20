@@ -65,7 +65,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     if cons !== nothing && f.cons_h === nothing
         fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
         hess_config_cache = [ForwardDiff.HessianConfig(fncs[i], x,
-            ForwardDiff.Chunk{chunksize}())
+                                 ForwardDiff.Chunk{chunksize}())
                              for i in 1:num_cons]
         cons_h = function (res, θ)
             for i in 1:num_cons
@@ -143,7 +143,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
     if cons !== nothing && f.cons_h === nothing
         fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
         hess_config_cache = [ForwardDiff.HessianConfig(fncs[i], cache.u0,
-            ForwardDiff.Chunk{chunksize}())
+                                 ForwardDiff.Chunk{chunksize}())
                              for i in 1:num_cons]
         cons_h = function (res, θ)
             for i in 1:num_cons
@@ -224,7 +224,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
     if cons !== nothing && f.cons_h === nothing
         fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
         hess_config_cache = [ForwardDiff.HessianConfig(fncs[i], x,
-            ForwardDiff.Chunk{chunksize}())
+                                 ForwardDiff.Chunk{chunksize}())
                              for i in 1:num_cons]
         cons_h = function (θ)
             map(1:num_cons) do i
@@ -306,7 +306,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
     if cons !== nothing && f.cons_h === nothing
         fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
         hess_config_cache = [ForwardDiff.HessianConfig(fncs[i], x,
-            ForwardDiff.Chunk{chunksize}())
+                                 ForwardDiff.Chunk{chunksize}())
                              for i in 1:num_cons]
         cons_h = function (θ)
             map(1:num_cons) do i

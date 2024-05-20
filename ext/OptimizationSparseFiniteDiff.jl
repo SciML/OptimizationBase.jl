@@ -10,7 +10,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
 
     if f.grad === nothing
         gradcache = FD.GradientCache(x, x)
-        grad = (res, θ, args...) -> FD.finite_difference_gradient!(res, x -> _f(x, args...),
+        grad = (res, θ, args...) -> FD.finite_difference_gradient!(
+            res, x -> _f(x, args...),
             θ, gradcache)
     else
         grad = (G, θ, args...) -> f.grad(G, θ, p, args...)
@@ -19,7 +20,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     hess_sparsity = f.hess_prototype
     hess_colors = f.hess_colorvec
     if f.hess === nothing
-        hess_sparsity = isnothing(f.hess_prototype) ? Symbolics.hessian_sparsity(_f, x) : f.hess_prototype
+        hess_sparsity = isnothing(f.hess_prototype) ? Symbolics.hessian_sparsity(_f, x) :
+                        f.hess_prototype
         hess_colors = matrix_colors(hess_sparsity)
         hess = (res, θ, args...) -> numauto_color_hessian!(res, x -> _f(x, args...), θ,
             ForwardColorHesCache(_f, x,
@@ -71,15 +73,17 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     conshess_caches = [(; sparsity = f.cons_hess_prototype, colors = f.cons_hess_colorvec)]
     if cons !== nothing && f.cons_h === nothing
         function gen_conshess_cache(_f, x, i)
-            conshess_sparsity = isnothing(f.cons_hess_prototype) ? copy(Symbolics.hessian_sparsity(_f, x)) : f.cons_hess_prototype[i]
+            conshess_sparsity = isnothing(f.cons_hess_prototype) ?
+                                copy(Symbolics.hessian_sparsity(_f, x)) :
+                                f.cons_hess_prototype[i]
             conshess_colors = matrix_colors(conshess_sparsity)
             hesscache = ForwardColorHesCache(_f, x, conshess_colors, conshess_sparsity)
             return hesscache
         end
 
         fcons = [(x) -> (_res = zeros(eltype(x), num_cons);
-        cons(_res, x);
-        _res[i]) for i in 1:num_cons]
+                 cons(_res, x);
+                 _res[i]) for i in 1:num_cons]
         conshess_caches = [gen_conshess_cache(fcons[i], x, i) for i in 1:num_cons]
         cons_h = function (res, θ)
             for i in 1:num_cons
@@ -134,10 +138,11 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
     _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
     x = cache.u0
     p = cache.p
-    
+
     if f.grad === nothing
         gradcache = FD.GradientCache(cache.u0, cache.u0)
-        grad = (res, θ, args...) -> FD.finite_difference_gradient!(res, x -> _f(x, args...),
+        grad = (res, θ, args...) -> FD.finite_difference_gradient!(
+            res, x -> _f(x, args...),
             θ, gradcache)
     else
         grad = (G, θ, args...) -> f.grad(G, θ, cache.p, args...)
@@ -146,7 +151,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
     hess_sparsity = f.hess_prototype
     hess_colors = f.hess_colorvec
     if f.hess === nothing
-        hess_sparsity = isnothing(f.hess_prototype) ? Symbolics.hessian_sparsity(_f, x) : f.hess_prototype
+        hess_sparsity = isnothing(f.hess_prototype) ? Symbolics.hessian_sparsity(_f, x) :
+                        f.hess_prototype
         hess_colors = matrix_colors(hess_sparsity)
         hess = (res, θ, args...) -> numauto_color_hessian!(res, x -> _f(x, args...), θ,
             ForwardColorHesCache(_f, x,
@@ -198,15 +204,17 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
     conshess_caches = [(; sparsity = f.cons_hess_prototype, colors = f.cons_hess_colorvec)]
     if cons !== nothing && f.cons_h === nothing
         function gen_conshess_cache(_f, x, i)
-            conshess_sparsity = isnothing(f.cons_hess_prototype) ? copy(Symbolics.hessian_sparsity(_f, x)) : f.cons_hess_prototype[i]
+            conshess_sparsity = isnothing(f.cons_hess_prototype) ?
+                                copy(Symbolics.hessian_sparsity(_f, x)) :
+                                f.cons_hess_prototype[i]
             conshess_colors = matrix_colors(conshess_sparsity)
             hesscache = ForwardColorHesCache(_f, x, conshess_colors, conshess_sparsity)
             return hesscache
         end
 
         fcons = [(x) -> (_res = zeros(eltype(x), num_cons);
-        cons(_res, x);
-        _res[i]) for i in 1:num_cons]
+                 cons(_res, x);
+                 _res[i]) for i in 1:num_cons]
         conshess_caches = [gen_conshess_cache(fcons[i], x, i) for i in 1:num_cons]
         cons_h = function (res, θ)
             for i in 1:num_cons

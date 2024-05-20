@@ -11,12 +11,12 @@ end
 using ArrayInterface, Base.Iterators, SparseArrays, LinearAlgebra
 
 import SciMLBase: OptimizationProblem,
-    OptimizationFunction, ObjSense,
-    MaxSense, MinSense, OptimizationStats
+                  OptimizationFunction, ObjSense,
+                  MaxSense, MinSense, OptimizationStats
 export ObjSense, MaxSense, MinSense
 
 struct NullCallback end
-(x::NullCallback)(args...) = false;
+(x::NullCallback)(args...) = false
 const DEFAULT_CALLBACK = NullCallback()
 
 struct NullData end
