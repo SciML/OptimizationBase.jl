@@ -6,7 +6,7 @@ import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.ADTypes: AutoModelingToolkit
 isdefined(Base, :get_extension) ? (using ModelingToolkit) : (using ..ModelingToolkit)
 
-function OptimizationBase.instantiate_function(f, x, adtype::AutoModelingToolkit, p,
+function OptimizationBase.instantiate_function(f, x, adtype::AutoSparse{<:AutoSymbolics}, p,
         num_cons = 0)
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
@@ -53,7 +53,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::AutoModelingToolkit
 end
 
 function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInitCache,
-        adtype::AutoModelingToolkit, num_cons = 0)
+        adtype::AutoSparse{<:AutoSymbolics}, num_cons = 0)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, cache.u0,

@@ -1,5 +1,5 @@
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
-        adtype::AutoSparseReverseDiff,
+        adtype::AutoSparse{<:AutoReverseDiff},
         p = SciMLBase.NullParameters(),
         num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
@@ -176,7 +176,7 @@ end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
         cache::OptimizationBase.ReInitCache,
-        adtype::AutoSparseReverseDiff, num_cons = 0)
+        adtype::AutoSparse{<:AutoReverseDiff}, num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
 
     chunksize = default_chunk_size(length(cache.u0))
@@ -374,7 +374,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
 end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x,
-        adtype::AutoSparseReverseDiff,
+        adtype::AutoSparse{<:AutoReverseDiff},
         p = SciMLBase.NullParameters(),
         num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
@@ -551,7 +551,7 @@ end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
         cache::OptimizationBase.ReInitCache,
-        adtype::AutoSparseReverseDiff, num_cons = 0)
+        adtype::AutoSparse{<:AutoReverseDiff}, num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
 
     chunksize = default_chunk_size(length(cache.u0))
