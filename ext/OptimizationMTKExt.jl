@@ -34,8 +34,7 @@ function OptimizationBase.instantiate_function(
     hess = (H, θ, args...) -> f.hess(H, θ, p, args...)
 
     hv = function (H, θ, v, args...)
-        res = adtype.obj_sparse ? (eltype(θ)).(f.hess_prototype) :
-              ArrayInterface.zeromatrix(θ)
+        res = (eltype(θ)).(f.hess_prototype)
         hess(res, θ, args...)
         H .= res * v
     end
@@ -81,8 +80,7 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
     hess = (H, θ, args...) -> f.hess(H, θ, cache.p, args...)
 
     hv = function (H, θ, v, args...)
-        res = adtype.obj_sparse ? (eltype(θ)).(f.hess_prototype) :
-              ArrayInterface.zeromatrix(θ)
+        res = (eltype(θ)).(f.hess_prototype)
         hess(res, θ, args...)
         H .= res * v
     end
@@ -127,8 +125,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::AutoSymbolics, p,
     hess = (H, θ, args...) -> f.hess(H, θ, p, args...)
 
     hv = function (H, θ, v, args...)
-        res = adtype.obj_sparse ? (eltype(θ)).(f.hess_prototype) :
-              ArrayInterface.zeromatrix(θ)
+        res = ArrayInterface.zeromatrix(θ)
         hess(res, θ, args...)
         H .= res * v
     end
@@ -174,8 +171,7 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
     hess = (H, θ, args...) -> f.hess(H, θ, cache.p, args...)
 
     hv = function (H, θ, v, args...)
-        res = adtype.obj_sparse ? (eltype(θ)).(f.hess_prototype) :
-              ArrayInterface.zeromatrix(θ)
+        res = ArrayInterface.zeromatrix(θ)
         hess(res, θ, args...)
         H .= res * v
     end
