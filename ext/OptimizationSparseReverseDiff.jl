@@ -1,5 +1,9 @@
+function OptimizationBase.ADTypes.AutoSparseReverseDiff(compile::Bool)
+    return AutoSparse(AutoReverseDiff(; compile))
+end
+
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
-        adtype::AutoSparseReverseDiff,
+        adtype::AutoSparse{<:AutoReverseDiff},
         p = SciMLBase.NullParameters(),
         num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
@@ -7,7 +11,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     chunksize = default_chunk_size(length(x))
 
     if f.grad === nothing
-        if adtype.compile
+        if adtype.dense_ad.compile
             _tape = ReverseDiff.GradientTape(_f, x)
             tape = ReverseDiff.compile(_tape)
             grad = function (res, θ, args...)
@@ -29,12 +33,12 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     if f.hess === nothing
         hess_sparsity = Symbolics.hessian_sparsity(_f, x)
         hess_colors = SparseDiffTools.matrix_colors(tril(hess_sparsity))
-        if adtype.compile
+        if adtype.dense_ad.compile
             T = ForwardDiff.Tag(OptimizationSparseReverseTag(), eltype(x))
             xdual = ForwardDiff.Dual{
                 typeof(T),
                 eltype(x),
-                min(chunksize, maximum(hess_colors)),
+                min(chunksize, maximum(hess_colors))
             }.(x,
                 Ref(ForwardDiff.Partials((ones(eltype(x),
                     min(chunksize, maximum(hess_colors)))...,))))
@@ -115,15 +119,16 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
         conshess_sparsity = Symbolics.hessian_sparsity.(fncs, Ref(x))
         conshess_colors = SparseDiffTools.matrix_colors.(conshess_sparsity)
-        if adtype.compile
+        if adtype.dense_ad.compile
             T = ForwardDiff.Tag(OptimizationSparseReverseTag(), eltype(x))
             xduals = [ForwardDiff.Dual{
-                typeof(T),
-                eltype(x),
-                min(chunksize, maximum(conshess_colors[i])),
-            }.(x,
-                Ref(ForwardDiff.Partials((ones(eltype(x),
-                    min(chunksize, maximum(conshess_colors[i])))...,)))) for i in 1:num_cons]
+                          typeof(T),
+                          eltype(x),
+                          min(chunksize, maximum(conshess_colors[i]))
+                      }.(x,
+                          Ref(ForwardDiff.Partials((ones(eltype(x),
+                              min(chunksize, maximum(conshess_colors[i])))...,))))
+                      for i in 1:num_cons]
             consh_tapes = [ReverseDiff.GradientTape(fncs[i], xduals[i]) for i in 1:num_cons]
             conshtapes = ReverseDiff.compile.(consh_tapes)
             function grad_cons(res1, θ, htape)
@@ -131,10 +136,10 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
             end
             gs = [(res1, x) -> grad_cons(res1, x, conshtapes[i]) for i in 1:num_cons]
             jaccfgs = [ForwardColorJacCache(gs[i],
-                x;
-                tag = typeof(T),
-                colorvec = conshess_colors[i],
-                sparsity = conshess_sparsity[i]) for i in 1:num_cons]
+                           x;
+                           tag = typeof(T),
+                           colorvec = conshess_colors[i],
+                           sparsity = conshess_sparsity[i]) for i in 1:num_cons]
             cons_h = function (res, θ, args...)
                 for i in 1:num_cons
                     SparseDiffTools.forwarddiff_color_jacobian!(res[i],
@@ -176,13 +181,13 @@ end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
         cache::OptimizationBase.ReInitCache,
-        adtype::AutoSparseReverseDiff, num_cons = 0)
+        adtype::AutoSparse{<:AutoReverseDiff}, num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
 
     chunksize = default_chunk_size(length(cache.u0))
 
     if f.grad === nothing
-        if adtype.compile
+        if adtype.dense_ad.compile
             _tape = ReverseDiff.GradientTape(_f, cache.u0)
             tape = ReverseDiff.compile(_tape)
             grad = function (res, θ, args...)
@@ -204,12 +209,12 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
     if f.hess === nothing
         hess_sparsity = Symbolics.hessian_sparsity(_f, cache.u0)
         hess_colors = SparseDiffTools.matrix_colors(tril(hess_sparsity))
-        if adtype.compile
+        if adtype.dense_ad.compile
             T = ForwardDiff.Tag(OptimizationSparseReverseTag(), eltype(cache.u0))
             xdual = ForwardDiff.Dual{
                 typeof(T),
                 eltype(cache.u0),
-                min(chunksize, maximum(hess_colors)),
+                min(chunksize, maximum(hess_colors))
             }.(cache.u0,
                 Ref(ForwardDiff.Partials((ones(eltype(cache.u0),
                     min(chunksize, maximum(hess_colors)))...,))))
@@ -307,15 +312,16 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
             end
         end
         conshess_colors = SparseDiffTools.matrix_colors.(conshess_sparsity)
-        if adtype.compile
+        if adtype.dense_ad.compile
             T = ForwardDiff.Tag(OptimizationSparseReverseTag(), eltype(cache.u0))
             xduals = [ForwardDiff.Dual{
-                typeof(T),
-                eltype(cache.u0),
-                min(chunksize, maximum(conshess_colors[i])),
-            }.(cache.u0,
-                Ref(ForwardDiff.Partials((ones(eltype(cache.u0),
-                    min(chunksize, maximum(conshess_colors[i])))...,)))) for i in 1:num_cons]
+                          typeof(T),
+                          eltype(cache.u0),
+                          min(chunksize, maximum(conshess_colors[i]))
+                      }.(cache.u0,
+                          Ref(ForwardDiff.Partials((ones(eltype(cache.u0),
+                              min(chunksize, maximum(conshess_colors[i])))...,))))
+                      for i in 1:num_cons]
             consh_tapes = [ReverseDiff.GradientTape(fncs[i], xduals[i]) for i in 1:num_cons]
             conshtapes = ReverseDiff.compile.(consh_tapes)
             function grad_cons(res1, θ, htape)
@@ -329,10 +335,10 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
                 end
             end
             jaccfgs = [ForwardColorJacCache(gs[i],
-                cache.u0;
-                tag = typeof(T),
-                colorvec = conshess_colors[i],
-                sparsity = conshess_sparsity[i]) for i in 1:num_cons]
+                           cache.u0;
+                           tag = typeof(T),
+                           colorvec = conshess_colors[i],
+                           sparsity = conshess_sparsity[i]) for i in 1:num_cons]
             cons_h = function (res, θ)
                 for i in 1:num_cons
                     SparseDiffTools.forwarddiff_color_jacobian!(res[i],
@@ -374,7 +380,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
 end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x,
-        adtype::AutoSparseReverseDiff,
+        adtype::AutoSparse{<:AutoReverseDiff},
         p = SciMLBase.NullParameters(),
         num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
@@ -382,7 +388,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
     chunksize = default_chunk_size(length(x))
 
     if f.grad === nothing
-        if adtype.compile
+        if adtype.dense_ad.compile
             _tape = ReverseDiff.GradientTape(_f, x)
             tape = ReverseDiff.compile(_tape)
             grad = function (θ, args...)
@@ -403,12 +409,12 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
     if f.hess === nothing
         hess_sparsity = Symbolics.hessian_sparsity(_f, x)
         hess_colors = SparseDiffTools.matrix_colors(tril(hess_sparsity))
-        if adtype.compile
+        if adtype.dense_ad.compile
             T = ForwardDiff.Tag(OptimizationSparseReverseTag(), eltype(x))
             xdual = ForwardDiff.Dual{
                 typeof(T),
                 eltype(x),
-                min(chunksize, maximum(hess_colors)),
+                min(chunksize, maximum(hess_colors))
             }.(x,
                 Ref(ForwardDiff.Partials((ones(eltype(x),
                     min(chunksize, maximum(hess_colors)))...,))))
@@ -491,15 +497,16 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
         conshess_sparsity = Symbolics.hessian_sparsity.(fncs, Ref(x))
         conshess_colors = SparseDiffTools.matrix_colors.(conshess_sparsity)
-        if adtype.compile
+        if adtype.dense_ad.compile
             T = ForwardDiff.Tag(OptimizationSparseReverseTag(), eltype(x))
             xduals = [ForwardDiff.Dual{
-                typeof(T),
-                eltype(x),
-                min(chunksize, maximum(conshess_colors[i])),
-            }.(x,
-                Ref(ForwardDiff.Partials((ones(eltype(x),
-                    min(chunksize, maximum(conshess_colors[i])))...,)))) for i in 1:num_cons]
+                          typeof(T),
+                          eltype(x),
+                          min(chunksize, maximum(conshess_colors[i]))
+                      }.(x,
+                          Ref(ForwardDiff.Partials((ones(eltype(x),
+                              min(chunksize, maximum(conshess_colors[i])))...,))))
+                      for i in 1:num_cons]
             consh_tapes = [ReverseDiff.GradientTape(fncs[i], xduals[i]) for i in 1:num_cons]
             conshtapes = ReverseDiff.compile.(consh_tapes)
             function grad_cons(θ, htape)
@@ -507,10 +514,10 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             end
             gs = [(x) -> grad_cons(x, conshtapes[i]) for i in 1:num_cons]
             jaccfgs = [ForwardColorJacCache(gs[i],
-                x;
-                tag = typeof(T),
-                colorvec = conshess_colors[i],
-                sparsity = conshess_sparsity[i]) for i in 1:num_cons]
+                           x;
+                           tag = typeof(T),
+                           colorvec = conshess_colors[i],
+                           sparsity = conshess_sparsity[i]) for i in 1:num_cons]
             cons_h = function (θ, args...)
                 map(1:num_cons) do i
                     SparseDiffTools.forwarddiff_color_jacobian(gs[i],
@@ -551,7 +558,7 @@ end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
         cache::OptimizationBase.ReInitCache,
-        adtype::AutoSparseReverseDiff, num_cons = 0)
+        adtype::AutoSparse{<:AutoReverseDiff}, num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
 
     chunksize = default_chunk_size(length(cache.u0))
@@ -559,7 +566,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
     x = cache.u0
 
     if f.grad === nothing
-        if adtype.compile
+        if adtype.dense_ad.compile
             _tape = ReverseDiff.GradientTape(_f, x)
             tape = ReverseDiff.compile(_tape)
             grad = function (θ, args...)
@@ -580,12 +587,12 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
     if f.hess === nothing
         hess_sparsity = Symbolics.hessian_sparsity(_f, x)
         hess_colors = SparseDiffTools.matrix_colors(tril(hess_sparsity))
-        if adtype.compile
+        if adtype.dense_ad.compile
             T = ForwardDiff.Tag(OptimizationSparseReverseTag(), eltype(x))
             xdual = ForwardDiff.Dual{
                 typeof(T),
                 eltype(x),
-                min(chunksize, maximum(hess_colors)),
+                min(chunksize, maximum(hess_colors))
             }.(x,
                 Ref(ForwardDiff.Partials((ones(eltype(x),
                     min(chunksize, maximum(hess_colors)))...,))))
@@ -668,15 +675,16 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
         fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
         conshess_sparsity = Symbolics.hessian_sparsity.(fncs, Ref(x))
         conshess_colors = SparseDiffTools.matrix_colors.(conshess_sparsity)
-        if adtype.compile
+        if adtype.dense_ad.compile
             T = ForwardDiff.Tag(OptimizationSparseReverseTag(), eltype(x))
             xduals = [ForwardDiff.Dual{
-                typeof(T),
-                eltype(x),
-                min(chunksize, maximum(conshess_colors[i])),
-            }.(x,
-                Ref(ForwardDiff.Partials((ones(eltype(x),
-                    min(chunksize, maximum(conshess_colors[i])))...,)))) for i in 1:num_cons]
+                          typeof(T),
+                          eltype(x),
+                          min(chunksize, maximum(conshess_colors[i]))
+                      }.(x,
+                          Ref(ForwardDiff.Partials((ones(eltype(x),
+                              min(chunksize, maximum(conshess_colors[i])))...,))))
+                      for i in 1:num_cons]
             consh_tapes = [ReverseDiff.GradientTape(fncs[i], xduals[i]) for i in 1:num_cons]
             conshtapes = ReverseDiff.compile.(consh_tapes)
             function grad_cons(θ, htape)
@@ -684,10 +692,10 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
             end
             gs = [(x) -> grad_cons(x, conshtapes[i]) for i in 1:num_cons]
             jaccfgs = [ForwardColorJacCache(gs[i],
-                x;
-                tag = typeof(T),
-                colorvec = conshess_colors[i],
-                sparsity = conshess_sparsity[i]) for i in 1:num_cons]
+                           x;
+                           tag = typeof(T),
+                           colorvec = conshess_colors[i],
+                           sparsity = conshess_sparsity[i]) for i in 1:num_cons]
             cons_h = function (θ, args...)
                 map(1:num_cons) do i
                     SparseDiffTools.forwarddiff_color_jacobian(gs[i],
