@@ -256,7 +256,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
 
     _f = (θ, args...) -> first(f.f(θ, cache.p, args...))
     p = cache.p
-
+    x = cache.u0
     if f.grad === nothing
         gradcfg = ForwardDiff.GradientConfig(_f, x, ForwardDiff.Chunk{chunksize}())
         grad = (θ, args...) -> ForwardDiff.gradient(x -> _f(x, args...), θ,
