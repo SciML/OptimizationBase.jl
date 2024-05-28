@@ -10,7 +10,7 @@ using ADTypes
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::ADTypes.AbstractADType, p = SciMLBase.NullParameters(), num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
-    soadtype = DifferentiationInterface.SecondOrder(adtype)
+    soadtype = DifferentiationInterface.SecondOrder(adtype, adtype)
 
     if f.grad === nothing
         extras_grad = prepare_gradient(_f, adtype, x)
@@ -57,6 +57,9 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         extras_jac = prepare_jacobian(cons_oop, adtype, x)
         cons_j = function (J, θ)
             jacobian!(cons_oop, J, adtype, θ, extras_jac)
+            if size(J, 1) == 1
+                J = vec(J)
+            end
         end
     else
         cons_j = (J, θ) -> f.cons_j(J, θ, p)
@@ -97,7 +100,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, ca
     x = cache.u0
     p = cache.p
     _f = (θ, args...) -> first(f.f(θ, p, args...))
-    soadtype = DifferentiationInterface.SecondOrder(adtype)
+    soadtype = DifferentiationInterface.SecondOrder(adtype, adtype)
 
     if f.grad === nothing
         extras_grad = prepare_gradient(_f, adtype, x)
@@ -144,6 +147,9 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, ca
         extras_jac = prepare_jacobian(cons_oop, adtype, x)
         cons_j = function (J, θ)
             jacobian!(cons_oop, J, adtype, θ, extras_jac)
+            if size(J, 1) == 1
+                J = vec(J)
+            end
         end
     else
         cons_j = (J, θ) -> f.cons_j(J, θ, p)
@@ -183,7 +189,7 @@ end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x, adtype::ADTypes.AbstractADType, p = SciMLBase.NullParameters(), num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
-    soadtype = DifferentiationInterface.SecondOrder(adtype)
+    soadtype = DifferentiationInterface.SecondOrder(adtype, adtype)
 
     if f.grad === nothing
         extras_grad = prepare_gradient(_f, adtype, x)
@@ -229,7 +235,11 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
     if cons !== nothing && f.cons_j === nothing
         extras_jac = prepare_jacobian(cons_oop, adtype, x)
         cons_j = function (θ)
-            jacobian(cons_oop, adtype, θ, extras_jac)
+            J = jacobian(cons_oop, adtype, θ, extras_jac)
+            if size(J, 1) == 1
+                J = vec(J)
+            end
+            return J
         end
     else
         cons_j = (θ) -> f.cons_j(θ, p)
@@ -241,10 +251,11 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
         extras_cons_hess = prepare_hessian.(fncs, Ref(soadtype), Ref(x))
 
-        function cons_h(H, θ)
-            for i in 1:num_cons
+        function cons_h(θ)
+            H = map(1:num_cons) do i
                 hessian(fncs[i], adtype, θ, extras_cons_hess[i])
             end
+            return H
         end
     else
         cons_h = (res, θ) -> f.cons_h(res, θ, p)
@@ -270,7 +281,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
     x = cache.u0
     p = cache.p
     _f = (θ, args...) -> first(f.f(θ, p, args...))
-    soadtype = DifferentiationInterface.SecondOrder(adtype)
+    soadtype = DifferentiationInterface.SecondOrder(adtype, adtype)
 
     if f.grad === nothing
         extras_grad = prepare_gradient(_f, adtype, x)
@@ -316,7 +327,11 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
     if cons !== nothing && f.cons_j === nothing
         extras_jac = prepare_jacobian(cons_oop, adtype, x)
         cons_j = function (θ)
-            jacobian(cons_oop, adtype, θ, extras_jac)
+            J = jacobian(cons_oop, adtype, θ, extras_jac)
+            if size(J, 1) == 1
+                J = vec(J)
+            end
+            return J
         end
     else
         cons_j = (θ) -> f.cons_j(θ, p)
@@ -329,9 +344,10 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, c
         extras_cons_hess = prepare_hessian.(fncs, Ref(soadtype), Ref(x))
 
         function cons_h(θ)
-            for i in 1:num_cons
+            H = map(1:num_cons) do i
                 hessian(fncs[i], adtype, θ, extras_cons_hess[i])
             end
+            return H
         end
     else
         cons_h = (θ) -> f.cons_h(θ, p)
