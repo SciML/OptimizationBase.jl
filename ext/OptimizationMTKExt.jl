@@ -7,7 +7,7 @@ import OptimizationBase.ADTypes: AutoModelingToolkit, AutoSymbolics, AutoSparse
 isdefined(Base, :get_extension) ? (using ModelingToolkit) : (using ..ModelingToolkit)
 
 function OptimizationBase.instantiate_function(
-        f, x, adtype::AutoSparse{<:AutoSymbolics, S, C}, p,
+        f::OptimizationFunction{true}, x, adtype::AutoSparse{<:AutoSymbolics, S, C}, p,
         num_cons = 0) where {S, C}
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
@@ -52,7 +52,7 @@ function OptimizationBase.instantiate_function(
         observed = f.observed)
 end
 
-function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
         adtype::AutoSparse{<:AutoSymbolics, S, C}, num_cons = 0) where {S, C}
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
@@ -98,7 +98,7 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
         observed = f.observed)
 end
 
-function OptimizationBase.instantiate_function(f, x, adtype::AutoSymbolics, p,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::AutoSymbolics, p,
         num_cons = 0)
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
@@ -143,7 +143,7 @@ function OptimizationBase.instantiate_function(f, x, adtype::AutoSymbolics, p,
         observed = f.observed)
 end
 
-function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
         adtype::AutoSymbolics, num_cons = 0)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
