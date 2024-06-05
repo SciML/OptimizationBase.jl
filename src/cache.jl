@@ -30,21 +30,31 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
 
     if (f.sys === nothing || f.sys isa SymbolicIndexingInterface.SymbolCache{Nothing, Nothing, Nothing}) && mtkize
         try
-            vars = ArrayInterface.restructure(prob.u0, [variable(:x, i) for i in eachindex(prob.u0)])
+            vars =
+            if prob.u0 isa Matrix
+                @variables X[1:size(prob.u0, 1), 1:size(prob.u0, 2)]
+            else
+                ArrayInterface.restructure(prob.u0, [variable(:x, i) for i in eachindex(prob.u0)])
+            end
             params = if prob.p isa SciMLBase.NullParameters
                 []
-            elseif prob.p isa MTK.MTKParameters
-                [variable(:α, i) for i in eachindex(vcat(p...))]
+            # elseif prob.p isa MTK.MTKParameters
+            #     [variable(:α, i) for i in eachindex(vcat(p...))]
             else
                 ArrayInterface.restructure(p, [variable(:α, i) for i in eachindex(p)])
             end
+
+            if prob.u0 isa Matrix
+                vars = vars[1]
+            end
+
             obj_expr = f.f(vars, params)
-        
+
             if SciMLBase.isinplace(prob) && !isnothing(prob.f.cons)
                 lhs = Array{Symbolics.Num}(undef, num_cons)
                 f.cons(lhs, vars)
                 cons = Union{Equation, Inequality}[]
-        
+
                 if !isnothing(prob.lcons)
                     for i in 1:num_cons
                         if !isinf(prob.lcons[i])
@@ -56,7 +66,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
                         end
                     end
                 end
-        
+
                 if !isnothing(prob.ucons)
                     for i in 1:num_cons
                         if !isinf(prob.ucons[i]) && prob.lcons[i] != prob.ucons[i]
@@ -89,14 +99,14 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
     try
         obj_expr = obj_expr |> Symbolics.unwrap
         obj_expr = propagate_curvature(propagate_sign(obj_expr))
-        @show getcurvature(obj_expr)
+        @info "Objective: $(SymbolicAnalysis.getcurvature(obj_expr))"
     catch
         @info "No euclidean atom available"
     end
 
     try
         obj_expr = SymbolicAnalysis.propagate_gcurvature(propagate_sign(obj_expr))
-        @show SymbolicAnalysis.getgcurvature(obj_expr)
+        @info "Objective: $(SymbolicAnalysis.getgcurvature(obj_expr))"
     catch
         @info "No SPD atom available"
     end
@@ -104,7 +114,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
     if !isnothing(cons_expr)
         cons_expr = cons_expr .|> Symbolics.unwrap
         cons_expr = propagate_curvature.(propagate_sign.(cons_expr))
-        @show getcurvature.(cons_expr)
+        @info "Constraints: $(SymbolicAnalysis.getcurvature.(obj_expr))"
     end
 
     return OptimizationCache(f, reinit_cache, prob.lb, prob.ub, prob.lcons,

@@ -27,15 +27,11 @@ prob = OptimizationProblem(optf, x0, lcons = [1.0, -Inf], ucons = [1.0, 0.0], lb
 
 m = 100
 σ = 0.005
-q = Matrix{Float64}(I, 5, 5) .+ 2.0
+q = Matrix{Float64}(I) .+ 2.0
 
 M = SymmetricPositiveDefinite(5)
 @variables X[1:5, 1:5]
 data2 = [exp(M, q, σ * rand(M; vector_at=q)) for i in 1:m];
-
-obj = sum(SymbolicAnalysis.distance(M, data2[i], X)^2 for i in 1:5)
-optsys = complete(OptimizationSystem(obj, X, [], name = :opt1))
-prob = OptimizationProblem(optsys, data2[1])
 
 f(x, p = nothing) = sum(SymbolicAnalysis.distance(M, data2[i], x)^2 for i in 1:5)
 optf = OptimizationFunction(f, Optimization.AutoZygote(); expr = prob.f.expr, sys = prob.f.sys)

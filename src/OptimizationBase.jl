@@ -11,10 +11,9 @@ end
 using ArrayInterface, Base.Iterators, SparseArrays, LinearAlgebra
 using SymbolicIndexingInterface
 using SymbolicAnalysis
-import ModelingToolkit as MTK
 import Symbolics
 import Manifolds
-import Symbolics: variable, Equation, Inequality, unwrap
+import Symbolics: variable, Equation, Inequality, unwrap, @variables
 import SciMLBase: OptimizationProblem,
                   OptimizationFunction, ObjSense,
                   MaxSense, MinSense, OptimizationStats
