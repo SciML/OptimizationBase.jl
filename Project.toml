@@ -13,36 +13,27 @@ Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SparseConnectivityTracer = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
+SparseMatrixColorings = "0a514795-09f3-496d-8182-132a7b665d35"
 
 [weakdeps]
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
-<<<<<<< HEAD
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
+ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [extensions]
-OptimizationDIExt = "DifferentiationInterface"
+OptimizationDIExt = ["DifferentiationInterface", "ForwardDiff", "ReverseDiff"]
 OptimizationMTKExt = "ModelingToolkit"
 OptimizationZygoteExt = ["Zygote", "DifferentiationInterface"]
-=======
-
-[extensions]
-OptimizationDIExt = "DifferentiationInterface"
->>>>>>> 85bb5e4 (Start experimenting with DI)
 
 [compat]
 ADTypes = "1"
 ArrayInterface = "7.6"
 DocStringExtensions = "0.9"
-<<<<<<< HEAD
 LinearAlgebra = "1.9, 1.10"
 ModelingToolkit = "9"
-=======
-Enzyme = "0.11.11, 0.12"
-FiniteDiff = "2.12"
-ForwardDiff = "0.10.26"
-LinearAlgebra = "1.9, 1.10"
->>>>>>> 85bb5e4 (Start experimenting with DI)
 Reexport = "1.2"
 Requires = "1"
 SciMLBase = "2"
