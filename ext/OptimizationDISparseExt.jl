@@ -7,15 +7,17 @@ import DifferentiationInterface
 import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp, prepare_jacobian, 
                                 gradient!, hessian!, hvp!, jacobian!, gradient, hessian, hvp, jacobian
 using ADTypes
-import ForwardDiff, ReverseDiff
+using SparseConnectivityTracer, SparseMatrixColorings
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::ADTypes.AbstractADType, p = SciMLBase.NullParameters(), num_cons = 0)
+function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::ADTypes.AutoSparse, p = SciMLBase.NullParameters(), num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
 
-    if adtype isa ADTypes.ForwardMode
-        soadtype = DifferentiationInterface.SecondOrder(adtype, AutoReverseDiff())
-    elseif adtype isa ADTypes.ReverseMode
-        soadtype = DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype)
+    if adtype.sparsity_detector isa ADTypes.NoSparsityDetector && adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
+        adtype = AutoSparse(adtype.dense_ad; sparsity_detector = TracerLocalSparsityDetector(), coloring_algorithm = GreedyColoringAlgorithm())
+    elseif adtype.sparsity_detector isa ADTypes.NoSparsityDetector && !(adtype.coloring_algorithm isa AbstractADTypes.NoColoringAlgorithm)
+        adtype = AutoSparse(adtype.dense_ad; sparsity_detector = TracerLocalSparsityDetector(), coloring_algorithm = adtype.coloring_algorithm)
+    elseif !(adtype.sparsity_detector isa ADTypes.NoSparsityDetector) && adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
+        adtype = AutoSparse(adtype.dense_ad; sparsity_detector = adtype.sparsity_detector, coloring_algorithm = GreedyColoringAlgorithm())
     end
 
     if f.grad === nothing

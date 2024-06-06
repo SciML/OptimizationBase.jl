@@ -4,7 +4,7 @@ import OptimizationBase, OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase
 import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.ADTypes: AutoModelingToolkit, AutoSymbolics, AutoSparse
-isdefined(Base, :get_extension) ? (using ModelingToolkit) : (using ..ModelingToolkit)
+using ModelingToolkit
 
 function OptimizationBase.ADTypes.AutoModelingToolkit(sparse = false, cons_sparse = false)
     if sparse || cons_sparse
