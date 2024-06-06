@@ -3,8 +3,7 @@ module OptimizationZygoteExt
 import OptimizationBase
 import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.ADTypes: AutoZygote
-isdefined(Base, :get_extension) ? (using Zygote, Zygote.ForwardDiff) :
-(using ..Zygote, ..Zygote.ForwardDiff)
+using Zygote, Zygote.ForwardDiff
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         adtype::AutoZygote, p,

@@ -18,14 +18,18 @@ SymbolicAnalysis = "4297ee4d-0239-47d8-ba5d-195ecdf594fe"
 SymbolicIndexingInterface = "2efcf032-c050-4f8e-a9bb-153293bab1f5"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 SparseConnectivityTracer = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
+SparseMatrixColorings = "0a514795-09f3-496d-8182-132a7b665d35"
 
 [weakdeps]
 DifferentiationInterface = "a0c0ee7d-e4b9-4e03-894e-1c5f64a51d63"
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
+ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [extensions]
-OptimizationDIExt = "DifferentiationInterface"
+OptimizationDIExt = ["DifferentiationInterface", "ForwardDiff", "ReverseDiff"]
 OptimizationMTKExt = "ModelingToolkit"
 OptimizationZygoteExt = ["Zygote", "DifferentiationInterface"]
 
