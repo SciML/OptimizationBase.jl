@@ -4,7 +4,7 @@ import OptimizationBase, OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.LinearAlgebra: I
 import OptimizationBase.ADTypes: AutoEnzyme
-isdefined(Base, :get_extension) ? (using Enzyme) : (using ..Enzyme)
+using Enzyme
 
 @inline function firstapply(f::F, θ, p, args...) where {F}
     res = f(θ, p, args...)
