@@ -12,9 +12,9 @@ import ForwardDiff, ReverseDiff
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::ADTypes.AbstractADType, p = SciMLBase.NullParameters(), num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
 
-    if adtype isa ADTypes.ForwardMode
+    if ADTypes.mode(adtype) isa ADTypes.ForwardMode
         soadtype = DifferentiationInterface.SecondOrder(adtype, AutoReverseDiff())
-    elseif adtype isa ADTypes.ReverseMode
+    elseif ADTypes.mode(adtype) isa ADTypes.ReverseMode
         soadtype = DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype)
     end
 
@@ -30,7 +30,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     hess_sparsity = f.hess_prototype
     hess_colors = f.hess_colorvec
     if f.hess === nothing
-        extras_hess = prepare_hessian(_f, soadtype, x) #placeholder logic, can be made much better
+        extras_hess = prepare_hessian(_f, soadtype, x)
         function hess(res, θ, args...)
             hessian!(_f, res, adtype, θ, extras_hess)
         end

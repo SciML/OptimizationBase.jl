@@ -30,6 +30,7 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [extensions]
 OptimizationDIExt = ["DifferentiationInterface", "ForwardDiff", "ReverseDiff"]
+OptimizationEnzymeExt = "Enzyme"
 OptimizationMTKExt = "ModelingToolkit"
 OptimizationZygoteExt = ["Zygote", "DifferentiationInterface"]
 
