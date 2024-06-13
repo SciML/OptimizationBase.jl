@@ -6,14 +6,6 @@ import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.ADTypes: AutoModelingToolkit, AutoSymbolics, AutoSparse
 isdefined(Base, :get_extension) ? (using ModelingToolkit) : (using ..ModelingToolkit)
 
-function OptimizationBase.ADTypes.AutoModelingToolkit(sparse = false, cons_sparse = false)
-    if sparse || cons_sparse
-        return AutoSparse(AutoSymbolics())
-    else
-        return AutoSymbolics()
-    end
-end
-
 function OptimizationBase.instantiate_function(
         f, x, adtype::AutoSparse{<:AutoSymbolics, S, C}, p,
         num_cons = 0) where {S, C}

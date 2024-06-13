@@ -1,7 +1,7 @@
 name = "OptimizationBase"
 uuid = "bca83a33-5cc9-4baa-983d-23429ab6bcbb"
 authors = ["Vaibhav Dixit <vaibhavyashdixit@gmail.com> and contributors"]
-version = "1.0.2"
+version = "1.2.0"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -35,10 +35,10 @@ OptimizationTrackerExt = "Tracker"
 OptimizationZygoteExt = "Zygote"
 
 [compat]
-ADTypes = "1"
+ADTypes = "1.3"
 ArrayInterface = "7.6"
 DocStringExtensions = "0.9"
-Enzyme = "0.12"
+Enzyme = "0.12.12"
 FiniteDiff = "2.12"
 ForwardDiff = "0.10.26"
 LinearAlgebra = "1.9, 1.10"
@@ -51,7 +51,7 @@ SparseDiffTools = "2.14"
 Symbolics = "5.12"
 Tracker = "0.2.29"
 Zygote = "0.6.67"
-julia = "1.9"
+julia = "1.10"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
