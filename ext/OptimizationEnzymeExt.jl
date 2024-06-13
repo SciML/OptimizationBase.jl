@@ -137,7 +137,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
                     Enzyme.BatchDuplicated(bθ, vdbθ),
                     Const(f.cons),
                     Const(p),
-                    Const(num_const),
+                    Const(num_cons),
                     Const(i)
                 )
 
