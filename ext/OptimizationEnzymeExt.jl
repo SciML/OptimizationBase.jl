@@ -15,7 +15,7 @@ isdefined(Base, :get_extension) ? (using Enzyme) : (using ..Enzyme)
     end
 end
 
-function inner_grad(θ, bθ, f, p, args::VarArgs{Any, N}) where N
+function inner_grad(θ, bθ, f, p, args::Vararg{Any, N}) where N
     Enzyme.autodiff_deferred(Enzyme.Reverse,
         Const(firstapply),
         Active,
