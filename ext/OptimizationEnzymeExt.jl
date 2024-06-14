@@ -2,6 +2,7 @@ module OptimizationEnzymeExt
 
 import OptimizationBase, OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase: OptimizationFunction
+import OptimizationBase.SciMLBase
 import OptimizationBase.LinearAlgebra: I
 import OptimizationBase.ADTypes: AutoEnzyme
 using Enzyme
@@ -39,16 +40,26 @@ function hv_f2_alloc(x, f, p, args...)
     return dx
 end
 
-function inner_cons(fcons, x, p, num_cons, i)
+function inner_cons(x, fcons::Function, p::Union{SciMLBase.NullParameters, Nothing}, num_cons::Int, i::Int)
     res = zeros(eltype(x), num_cons)
     fcons(res, x, p)
     return res[i]
 end
 
 function cons_f2(x, dx, fcons, p, num_cons, i)
-    Enzyme.autodiff_deferred(Enzyme.Reverse, inner_cons, Active, Const(fcons), Enzyme.Duplicated(x, dx), Const(p), Const(num_cons), Const(i))
+    Enzyme.autodiff_deferred(Enzyme.Reverse, inner_cons, Active, Enzyme.Duplicated(x, dx), Const(fcons), Const(p), Const(num_cons), Const(i))
     return nothing
 end
+
+function inner_cons_oop(x::Vector{Float64}, fcons::Function, p::Union{SciMLBase.NullParameters, Nothing}, i::Int)::Float64
+    return fcons(x, p)[i]
+end
+
+function cons_f2_oop(x, dx, fcons, p, i)
+    Enzyme.autodiff_deferred(Enzyme.Reverse, inner_cons_oop, Active, Enzyme.Duplicated(x, dx), Const(fcons), Const(p), Const(i))
+    return nothing
+end
+
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         adtype::AutoEnzyme, p,
@@ -336,24 +347,22 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             vdθ = Tuple((Array(r) for r in eachrow(I(length(θ)) * 1.0)))
             bθ = zeros(length(θ))
             vdbθ = Tuple(zeros(length(θ)) for i in eachindex(θ))
-            res = Vector{VecOrMat}(undef, num_cons)
+            res = [zeros(eltype(x), length(θ), length(θ)) for i in 1:num_cons]
             for i in 1:num_cons
                 bθ .= zero(eltype(bθ))
                 for el in vdbθ
                     el .= zeros(length(θ))
                 end
                 Enzyme.autodiff(Enzyme.Forward,
-                    cons_f2,
+                    cons_f2_oop,
                     Enzyme.BatchDuplicated(θ, vdθ),
                     Enzyme.BatchDuplicated(bθ, vdbθ),
                     Const(f.cons),
                     Const(p),
-                    Const(num_cons),
                     Const(i)
                 )
-
                 for j in eachindex(θ)
-                    res[i][j, :] .= vdbθ[j]
+                    res[i][j, :] = vdbθ[j]
                 end
             end
             return res
