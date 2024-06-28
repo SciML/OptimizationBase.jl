@@ -99,22 +99,22 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
     try
         obj_expr = obj_expr |> Symbolics.unwrap
         obj_expr = propagate_curvature(propagate_sign(obj_expr))
-        @info "Objective: $(SymbolicAnalysis.getcurvature(obj_expr))"
+        @info "Objective Euclidean curvature: $(SymbolicAnalysis.getcurvature(obj_expr))"
     catch
         @info "No euclidean atom available"
     end
 
     try
-        obj_expr = SymbolicAnalysis.propagate_gcurvature(propagate_sign(obj_expr))
-        @info "Objective: $(SymbolicAnalysis.getgcurvature(obj_expr))"
-    catch
-        @info "No SPD atom available"
+        obj_expr = SymbolicAnalysis.propagate_gcurvature(propagate_sign(obj_expr), prob.kwargs[1])
+        @info "Objective Geodesic curvature: $(SymbolicAnalysis.getgcurvature(obj_expr))"
+    catch e
+        @show e
     end
 
     if !isnothing(cons_expr)
         cons_expr = cons_expr .|> Symbolics.unwrap
         cons_expr = propagate_curvature.(propagate_sign.(cons_expr))
-        @info "Constraints: $(SymbolicAnalysis.getcurvature.(obj_expr))"
+        @info "Constraints Euclidean curvature: $(SymbolicAnalysis.getcurvature.(cons_expr))"
     end
 
     return OptimizationCache(f, reinit_cache, prob.lb, prob.ub, prob.lcons,

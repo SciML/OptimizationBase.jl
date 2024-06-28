@@ -1,4 +1,4 @@
-using Optimization, OptimizationBase, ForwardDiff, SymbolicAnalysis
+using Optimization, OptimizationBase, ForwardDiff, SymbolicAnalysis, LinearAlgebra, Manifolds, OptimizationManopt
 
 function f(x, p = nothing)
     return exp(x[1]) + x[1]^2
@@ -27,15 +27,15 @@ prob = OptimizationProblem(optf, x0, lcons = [1.0, -Inf], ucons = [1.0, 0.0], lb
 
 m = 100
 σ = 0.005
-q = Matrix{Float64}(I) .+ 2.0
+q = Matrix{Float64}(LinearAlgebra.I(5)) .+ 2.0
 
 M = SymmetricPositiveDefinite(5)
-@variables X[1:5, 1:5]
 data2 = [exp(M, q, σ * rand(M; vector_at=q)) for i in 1:m];
 
 f(x, p = nothing) = sum(SymbolicAnalysis.distance(M, data2[i], x)^2 for i in 1:5)
-optf = OptimizationFunction(f, Optimization.AutoZygote(); expr = prob.f.expr, sys = prob.f.sys)
+optf = OptimizationFunction(f, Optimization.AutoZygote())
 prob = OptimizationProblem(optf, data2[1]; manifold = M)
 
 opt = OptimizationManopt.GradientDescentOptimizer()
-@time sol = solve(prob, opt, maxiters = 1000)
+@time sol = solve(prob, opt, maxiters = 100)
+@test sol.minimizer < 1e-1
