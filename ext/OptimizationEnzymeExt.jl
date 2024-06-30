@@ -122,7 +122,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     if f.cons === nothing
         cons = nothing
     else
-        cons = f.cons
+        cons = (res, θ, args...) -> f.cons(res, θ, p, args...)
     end
 
     if cons !== nothing && f.cons_j === nothing
@@ -226,7 +226,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
     if f.cons === nothing
         cons = nothing
     else
-        cons = f.cons
+        cons = (res, θ, args...) -> f.cons(res, θ, p, args...)
     end
 
     if cons !== nothing && f.cons_j === nothing
