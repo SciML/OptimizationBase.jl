@@ -134,7 +134,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
 
     if cons !== nothing && f.cons_j === nothing
         cons_j = function (J, θ, args...)
-            return Enzyme.autodiff(Enzyme.Forward, cons_oop, BatchDuplicated(θ, (J[i, :] for i in 1:num_cons)),
+            return Enzyme.autodiff(Enzyme.Forward, cons_oop,
+                BatchDuplicated(θ, Tuple(J[i, :] for i in 1:num_cons)),
                 Const(f.cons), Const(p), Const.(args)...)
         end
     else
@@ -240,7 +241,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
 
     if cons !== nothing && f.cons_j === nothing
         cons_j = function (J, θ, args...)
-            Enzyme.autodiff(Enzyme.Forward, cons_oop, BatchDuplicated(θ, (J[i, :] for i in 1:num_cons)),
+            Enzyme.autodiff(Enzyme.Forward, cons_oop,
+                BatchDuplicated(θ, Tuple(J[i, :] for i in 1:num_cons)),
                 Const(f.cons), Const(p), Const.(args)...)
         end
     else
@@ -347,7 +349,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
 
     if f.cons !== nothing && f.cons_j === nothing
         cons_j = function (θ, args...)
-            J = (zeros(eltype(θ), length(θ)) for i in 1:num_cons)
+            J = Tuple(zeros(eltype(θ), length(θ)) for i in 1:num_cons)
             Enzyme.autodiff(
                 Enzyme.Forward, f.cons, BatchDuplicated(θ, J), Const(p), Const.(args)...)
             return reduce(vcat, reshape.(J, Ref(1), Ref(length(θ))))
@@ -459,7 +461,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
 
     if f.cons !== nothing && f.cons_j === nothing
         cons_j = function (θ, args...)
-            J = (zeros(eltype(θ), length(θ)) for i in 1:num_cons)
+            J = Tuple(zeros(eltype(θ), length(θ)) for i in 1:num_cons)
             Enzyme.autodiff(
                 Enzyme.Forward, f.cons, BatchDuplicated(θ, J), Const(p), Const.(args)...)
             return reduce(vcat, reshape.(J, Ref(1), Ref(length(θ))))
