@@ -9,7 +9,12 @@ if !isdefined(Base, :get_extension)
 end
 
 using ArrayInterface, Base.Iterators, SparseArrays, LinearAlgebra
-
+using SymbolicIndexingInterface
+using SymbolicAnalysis: propagate_sign, propagate_curvature, propagate_gcurvature,
+                        getcurvature, getgcurvature, getsign
+import Symbolics
+import Manifolds
+import Symbolics: variable, Equation, Inequality, unwrap, @variables
 import SciMLBase: OptimizationProblem,
                   OptimizationFunction, ObjSense,
                   MaxSense, MinSense, OptimizationStats
