@@ -22,13 +22,13 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
         abstol::Union{Number, Nothing} = nothing,
         reltol::Union{Number, Nothing} = nothing,
         progress = false,
-        mtkize = true,
+        structural_analysis = true,
         kwargs...)
     reinit_cache = OptimizationBase.ReInitCache(prob.u0, prob.p)
     num_cons = prob.ucons === nothing ? 0 : length(prob.ucons)
     f = OptimizationBase.instantiate_function(prob.f, reinit_cache, prob.f.adtype, num_cons)
 
-    if (f.sys === nothing || f.sys isa SymbolicIndexingInterface.SymbolCache{Nothing, Nothing, Nothing}) && mtkize
+    if (f.sys === nothing || f.sys isa SymbolicIndexingInterface.SymbolCache{Nothing, Nothing, Nothing}) && structural_analysis
         try
             vars =
             if prob.u0 isa Matrix
@@ -88,7 +88,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
             end
         catch err
             throw(ArgumentError("Automatic symbolic expression generation with ModelingToolkit failed with error: $err.
-            Try by setting `mtkize = false` instead if the solver doesn't require symbolic expressions."))
+            Try by setting `structural_analysis = false` instead if the solver doesn't require symbolic expressions."))
         end
     else
         sys = f.sys isa SymbolicIndexingInterface.SymbolCache{Nothing, Nothing, Nothing} ?
