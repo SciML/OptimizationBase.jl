@@ -22,24 +22,27 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
         abstol::Union{Number, Nothing} = nothing,
         reltol::Union{Number, Nothing} = nothing,
         progress = false,
-        structural_analysis = true,
+        structural_analysis = false,
+        manifold = nothing,
         kwargs...)
     reinit_cache = OptimizationBase.ReInitCache(prob.u0, prob.p)
     num_cons = prob.ucons === nothing ? 0 : length(prob.ucons)
     f = OptimizationBase.instantiate_function(prob.f, reinit_cache, prob.f.adtype, num_cons)
 
-    if (f.sys === nothing || f.sys isa SymbolicIndexingInterface.SymbolCache{Nothing, Nothing, Nothing}) && structural_analysis
+    if (f.sys === nothing ||
+        f.sys isa SymbolicIndexingInterface.SymbolCache{Nothing, Nothing, Nothing}) &&
+       structural_analysis
         try
-            vars =
-            if prob.u0 isa Matrix
+            vars = if prob.u0 isa Matrix
                 @variables X[1:size(prob.u0, 1), 1:size(prob.u0, 2)]
             else
-                ArrayInterface.restructure(prob.u0, [variable(:x, i) for i in eachindex(prob.u0)])
+                ArrayInterface.restructure(
+                    prob.u0, [variable(:x, i) for i in eachindex(prob.u0)])
             end
             params = if prob.p isa SciMLBase.NullParameters
                 []
-            # elseif prob.p isa MTK.MTKParameters
-            #     [variable(:α, i) for i in eachindex(vcat(p...))]
+            elseif prob.p isa MTK.MTKParameters
+                [variable(:α, i) for i in eachindex(vcat(p...))]
             else
                 ArrayInterface.restructure(p, [variable(:α, i) for i in eachindex(p)])
             end
@@ -87,7 +90,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
                 cons_expr = nothing
             end
         catch err
-            throw(ArgumentError("Automatic symbolic expression generation with ModelingToolkit failed with error: $err.
+            throw(ArgumentError("Automatic symbolic expression generation with failed with error: $err.
             Try by setting `structural_analysis = false` instead if the solver doesn't require symbolic expressions."))
         end
     else
@@ -96,25 +99,28 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
         obj_expr = f.expr
         cons_expr = f.cons_expr
     end
-    try
-        obj_expr = obj_expr |> Symbolics.unwrap
-        obj_expr = propagate_curvature(propagate_sign(obj_expr))
-        @info "Objective Euclidean curvature: $(SymbolicAnalysis.getcurvature(obj_expr))"
-    catch
-        @info "No euclidean atom available"
+
+    if obj_expr !== nothing
+        try
+            obj_expr = obj_expr |> Symbolics.unwrap
+            obj_expr = propagate_curvature(propagate_sign(obj_expr))
+            @info "Objective Euclidean curvature: $(getcurvature(obj_expr))"
+        catch
+            @info "No euclidean atom available"
+        end
+
+        try
+            obj_expr = propagate_gcurvature(propagate_sign(obj_expr), manifold)
+            @info "Objective Geodesic curvature: $(getgcurvature(obj_expr))"
+        catch
+            @info "No geodesic atom available"
+        end
     end
 
-    try
-        obj_expr = SymbolicAnalysis.propagate_gcurvature(propagate_sign(obj_expr), prob.kwargs[1])
-        @info "Objective Geodesic curvature: $(SymbolicAnalysis.getgcurvature(obj_expr))"
-    catch e
-        @show e
-    end
-
-    if !isnothing(cons_expr)
+    if cons_expr !== nothing
         cons_expr = cons_expr .|> Symbolics.unwrap
         cons_expr = propagate_curvature.(propagate_sign.(cons_expr))
-        @info "Constraints Euclidean curvature: $(SymbolicAnalysis.getcurvature.(cons_expr))"
+        @info "Constraints Euclidean curvature: $(getcurvature.(cons_expr))"
     end
 
     return OptimizationCache(f, reinit_cache, prob.lb, prob.ub, prob.lcons,
