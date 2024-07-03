@@ -10,8 +10,8 @@ end
 
 using ArrayInterface, Base.Iterators, SparseArrays, LinearAlgebra
 using SymbolicIndexingInterface
-using SymbolicAnalysis: propagate_sign, propagate_curvature, propagate_gcurvature,
-                        getcurvature, getgcurvature, getsign
+using SymbolicAnalysis
+using SymbolicAnalysis: AnalysisResult
 import Symbolics
 import Manifolds
 import Symbolics: variable, Equation, Inequality, unwrap, @variables
