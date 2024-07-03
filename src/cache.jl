@@ -1,5 +1,11 @@
 import Symbolics: ≲, ~
-struct OptimizationCache{F, RC, LB, UB, LC, UC, S, O, D, P, C} <:
+
+struct AnalysisResults
+    objective::Union{Nothing, AnalysisResult}
+    constraints::Union{Nothing, Vector{AnalysisResult}}
+end
+
+struct OptimizationCache{F, RC, LB, UB, LC, UC, S, O, D, P, C, M} <:
        SciMLBase.AbstractOptimizationCache
     f::F
     reinit_cache::RC
@@ -12,6 +18,8 @@ struct OptimizationCache{F, RC, LB, UB, LC, UC, S, O, D, P, C} <:
     data::D
     progress::P
     callback::C
+    manifold::M
+    analysis_results::AnalysisResults
     solver_args::NamedTuple
 end
 
@@ -101,32 +109,44 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
     end
 
     if obj_expr !== nothing
-        try
-            obj_expr = obj_expr |> Symbolics.unwrap
-            obj_expr = propagate_curvature(propagate_sign(obj_expr))
-            @info "Objective Euclidean curvature: $(getcurvature(obj_expr))"
-        catch
-            @info "No euclidean atom available"
+        obj_expr = obj_expr |> Symbolics.unwrap
+        if manifold === nothing
+            obj_res = analyze(obj_expr)
+        else
+            obj_res = analyze(obj_expr, manifold)
         end
 
-        try
-            obj_expr = propagate_gcurvature(propagate_sign(obj_expr), manifold)
-            @info "Objective Geodesic curvature: $(getgcurvature(obj_expr))"
-        catch
-            @info "No geodesic atom available"
+        @info "Objective Euclidean curvature: $(obj_res.curvature)"
+
+        if obj_res.gcurvature !== nothing
+            @info "Objective Geodesic curvature: $(obj_res.gcurvature)"
         end
+    else
+        obj_res = nothing
     end
 
     if cons_expr !== nothing
         cons_expr = cons_expr .|> Symbolics.unwrap
-        cons_expr = propagate_curvature.(propagate_sign.(cons_expr))
-        @info "Constraints Euclidean curvature: $(getcurvature.(cons_expr))"
+        if manifold === nothing
+            cons_res = analyze.(cons_expr)
+        else
+            cons_res = analyze.(cons_expr, Ref(manifold))
+        end
+        for i in 1:num_cons
+            @info "Constraints Euclidean curvature: $(cons_res[i].curvature)"
+
+            if cons_res[i].gcurvature !== nothing
+                @info "Constraints Geodesic curvature: $(cons_res[i].gcurvature)"
+            end
+        end
+    else
+        cons_res = nothing
     end
 
     return OptimizationCache(f, reinit_cache, prob.lb, prob.ub, prob.lcons,
         prob.ucons, prob.sense,
-        opt, data, progress, callback,
-        merge((; maxiters, maxtime, abstol, reltol, manifold),
+        opt, data, progress, callback, manifold, AnalysisResults(obj_res, cons_res),
+        merge((; maxiters, maxtime, abstol, reltol),
             NamedTuple(kwargs)))
 end
 
