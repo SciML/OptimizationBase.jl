@@ -126,7 +126,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
     return OptimizationCache(f, reinit_cache, prob.lb, prob.ub, prob.lcons,
         prob.ucons, prob.sense,
         opt, data, progress, callback,
-        merge((; maxiters, maxtime, abstol, reltol),
+        merge((; maxiters, maxtime, abstol, reltol, manifold),
             NamedTuple(kwargs)))
 end
 
