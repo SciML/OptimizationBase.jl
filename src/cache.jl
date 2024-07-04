@@ -105,10 +105,10 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
         sys = f.sys isa SymbolicIndexingInterface.SymbolCache{Nothing, Nothing, Nothing} ?
               nothing : f.sys
         obj_expr = f.expr
-        cons_expr = f.cons_expr
+        cons_expr = f.cons_expr === nothing ? nothing : getfield.(f.cons_expr, Ref(:lhs))
     end
 
-    if obj_expr !== nothing
+    if obj_expr !== nothing && structural_analysis
         obj_expr = obj_expr |> Symbolics.unwrap
         if manifold === nothing
             obj_res = analyze(obj_expr)
@@ -125,7 +125,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
         obj_res = nothing
     end
 
-    if cons_expr !== nothing
+    if cons_expr !== nothing && structural_analysis
         cons_expr = cons_expr .|> Symbolics.unwrap
         if manifold === nothing
             cons_res = analyze.(cons_expr)
