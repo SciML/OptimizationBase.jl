@@ -1,5 +1,5 @@
 """
-AutoEnzyme <: AbstractADType
+    AutoEnzyme <: AbstractADType
 
 An AbstractADType choice for use in OptimizationFunction for automatically
 generating the unspecified derivative functions. Usage:
@@ -19,7 +19,7 @@ is not defined via Enzyme.
 AutoEnzyme
 
 """
-AutoFiniteDiff{T1,T2,T3} <: AbstractADType
+    AutoFiniteDiff{T1,T2,T3} <: AbstractADType
 
 An AbstractADType choice for use in OptimizationFunction for automatically
 generating the unspecified derivative functions. Usage:
@@ -60,7 +60,7 @@ For more information on the derivative type specifiers, see the
 AutoFiniteDiff
 
 """
-AutoForwardDiff{chunksize} <: AbstractADType
+    AutoForwardDiff{chunksize} <: AbstractADType
 
 An AbstractADType choice for use in OptimizationFunction for automatically
 generating the unspecified derivative functions. Usage:
@@ -89,7 +89,7 @@ Hessian is not defined via ForwardDiff.
 AutoForwardDiff
 
 """
-AutoModelingToolkit <: AbstractADType
+    AutoModelingToolkit <: AbstractADType
 
 An AbstractADType choice for use in OptimizationFunction for automatically
 generating the unspecified derivative functions. Usage:
@@ -128,7 +128,7 @@ AutoModelingToolkit(false, false)
 AutoModelingToolkit
 
 """
-AutoReverseDiff <: AbstractADType
+    AutoReverseDiff <: AbstractADType
 
 An AbstractADType choice for use in OptimizationFunction for automatically
 generating the unspecified derivative functions. Usage:
@@ -169,7 +169,7 @@ AutoReverseDiff(; compile = false)
 AutoReverseDiff
 
 """
-AutoTracker <: AbstractADType
+    AutoTracker <: AbstractADType
 
 An AbstractADType choice for use in OptimizationFunction for automatically
 generating the unspecified derivative functions. Usage:
@@ -194,7 +194,7 @@ Hessian is not defined via Tracker.
 AutoTracker
 
 """
-AutoZygote <: AbstractADType
+    AutoZygote <: AbstractADType
 
 An AbstractADType choice for use in OptimizationFunction for automatically
 generating the unspecified derivative functions. Usage:

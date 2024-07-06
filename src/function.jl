@@ -19,7 +19,7 @@ end
 function rep_pars_vals!(e, p) end
 
 """
-instantiate_function(f, x, ::AbstractADType, p, num_cons = 0)::OptimizationFunction
+    instantiate_function(f, x, ::AbstractADType, p, num_cons = 0)::OptimizationFunction
 
 This function is used internally by Optimization.jl to construct
 the necessary extra functions (gradients, Hessians, etc.) before
