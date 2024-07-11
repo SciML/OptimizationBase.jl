@@ -44,8 +44,9 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
             vars = if prob.u0 isa Matrix
                 @variables X[1:size(prob.u0, 1), 1:size(prob.u0, 2)]
             else
-                ArrayInterface.restructure(
-                    prob.u0, [variable(:x, i) for i in eachindex(prob.u0)])
+                # ArrayInterface.restructure(
+                #     prob.u0, [variable(:x, i) for i in eachindex(prob.u0)])
+                @variables x[1:length(prob.u0)]
             end
             params = if prob.p isa SciMLBase.NullParameters
                 []
@@ -55,9 +56,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
                 ArrayInterface.restructure(p, [variable(:α, i) for i in eachindex(p)])
             end
 
-            if prob.u0 isa Matrix
-                vars = vars[1]
-            end
+            vars = vars[1]
 
             obj_expr = f.f(vars, params)
 
