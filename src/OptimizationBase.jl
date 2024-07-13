@@ -13,7 +13,6 @@ using SymbolicIndexingInterface
 using SymbolicAnalysis
 using SymbolicAnalysis: AnalysisResult
 import Symbolics
-import ManifoldsBase
 import Symbolics: variable, Equation, Inequality, unwrap, @variables
 import SciMLBase: OptimizationProblem,
                   OptimizationFunction, ObjSense,
