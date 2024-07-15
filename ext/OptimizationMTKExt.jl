@@ -7,8 +7,8 @@ import OptimizationBase.ADTypes: AutoModelingToolkit, AutoSymbolics, AutoSparse
 using ModelingToolkit
 
 function OptimizationBase.instantiate_function(
-        f::OptimizationFunction{true}, x, adtype::AutoSparse{<:AutoSymbolics, S, C}, p,
-        num_cons = 0) where {S, C}
+        f::OptimizationFunction{true}, x, adtype::AutoSparse{<:AutoSymbolics}, p,
+        num_cons = 0)
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, x, p;
@@ -53,7 +53,7 @@ function OptimizationBase.instantiate_function(
 end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
-        adtype::AutoSparse{<:AutoSymbolics, S, C}, num_cons = 0) where {S, C}
+        adtype::AutoSparse{<:AutoSymbolics}, num_cons = 0)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, cache.u0,

@@ -32,6 +32,8 @@ Base.length(::NullData) = 0
 include("adtypes.jl")
 include("cache.jl")
 include("function.jl")
+include("OptimizationDIExt.jl")
+include("OptimizationDISparseExt.jl")
 
 export solve, OptimizationCache, DEFAULT_CALLBACK, DEFAULT_DATA
 
