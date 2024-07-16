@@ -366,8 +366,6 @@ optprob2.cons_h(sH3, [5.0, 3.0])
     [2.8767727327346804 0.2836621681849162; 0.2836621681849162 -6.622738308376736e-9]
 ] rtol = 1e-4
 
-using SparseDiffTools
-
 optf = OptimizationFunction(rosenbrock,
     OptimizationBase.AutoSparseFiniteDiff(),
     cons = con2_c)
