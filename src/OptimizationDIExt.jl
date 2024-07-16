@@ -3,11 +3,15 @@ import OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.LinearAlgebra: I
 import DifferentiationInterface
-import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp, prepare_jacobian, 
-                                gradient!, hessian!, hvp!, jacobian!, gradient, hessian, hvp, jacobian
+import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp,
+                                 prepare_jacobian,
+                                 gradient!, hessian!, hvp!, jacobian!, gradient, hessian,
+                                 hvp, jacobian
 using ADTypes, SciMLBase
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::ADTypes.AbstractADType, p = SciMLBase.NullParameters(), num_cons = 0)
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, x, adtype::ADTypes.AbstractADType,
+        p = SciMLBase.NullParameters(), num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
 
     if !(adtype isa SciMLBase.NoAD) && ADTypes.mode(adtype) isa ADTypes.ForwardMode
@@ -100,7 +104,9 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache, adtype::ADTypes.AbstractADType, num_cons = 0)
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
+        adtype::ADTypes.AbstractADType, num_cons = 0)
     x = cache.u0
     p = cache.p
     _f = (θ, args...) -> first(f.f(θ, p, args...))
@@ -195,8 +201,9 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, ca
         lag_h, f.lag_hess_prototype)
 end
 
-
-function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x, adtype::ADTypes.AbstractADType, p = SciMLBase.NullParameters(), num_cons = 0)
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{false}, x, adtype::ADTypes.AbstractADType,
+        p = SciMLBase.NullParameters(), num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
 
     if !(adtype isa SciMLBase.NoAD) && ADTypes.mode(adtype) isa ADTypes.ForwardMode
@@ -291,7 +298,9 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache, adtype::ADTypes.AbstractADType, num_cons = 0)
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache,
+        adtype::ADTypes.AbstractADType, num_cons = 0)
     x = cache.u0
     p = cache.p
     _f = (θ, args...) -> first(f.f(θ, p, args...))

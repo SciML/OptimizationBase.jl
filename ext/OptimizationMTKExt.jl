@@ -52,7 +52,8 @@ function OptimizationBase.instantiate_function(
         observed = f.observed)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
         adtype::AutoSparse{<:AutoSymbolics}, num_cons = 0)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
@@ -98,7 +99,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, ca
         observed = f.observed)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x, adtype::AutoSymbolics, p,
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, x, adtype::AutoSymbolics, p,
         num_cons = 0)
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
@@ -143,7 +145,8 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         observed = f.observed)
 end
 
-function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
         adtype::AutoSymbolics, num_cons = 0)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
