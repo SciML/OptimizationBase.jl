@@ -18,6 +18,8 @@ function OptimizationBase.instantiate_function(
         soadtype = DifferentiationInterface.SecondOrder(adtype, AutoReverseDiff()) #make zygote?
     elseif !(adtype isa SciMLBase.NoAD) && ADTypes.mode(adtype) isa ADTypes.ReverseMode
         soadtype = DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype)
+    else
+        soadtype = adtype
     end
 
     if f.grad === nothing
@@ -115,6 +117,8 @@ function OptimizationBase.instantiate_function(
         soadtype = DifferentiationInterface.SecondOrder(adtype, AutoReverseDiff()) #make zygote?
     elseif !(adtype isa SciMLBase.NoAD) && ADTypes.mode(adtype) isa ADTypes.ReverseMode
         soadtype = DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype)
+    else
+        soadtype = adtype
     end
 
     if f.grad === nothing
@@ -210,6 +214,8 @@ function OptimizationBase.instantiate_function(
         soadtype = DifferentiationInterface.SecondOrder(adtype, AutoReverseDiff()) #make zygote?
     elseif !(adtype isa SciMLBase.NoAD) && ADTypes.mode(adtype) isa ADTypes.ReverseMode
         soadtype = DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype)
+    else
+        soadtype = adtype
     end
 
     if f.grad === nothing
@@ -309,6 +315,8 @@ function OptimizationBase.instantiate_function(
         soadtype = DifferentiationInterface.SecondOrder(adtype, AutoReverseDiff()) #make zygote?
     elseif !(adtype isa SciMLBase.NoAD) && ADTypes.mode(adtype) isa ADTypes.ReverseMode
         soadtype = DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype)
+    else
+        soadtype = adtype
     end
 
     if f.grad === nothing

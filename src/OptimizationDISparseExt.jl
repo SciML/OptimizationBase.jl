@@ -181,9 +181,9 @@ function OptimizationBase.instantiate_function(
     adtype, soadtype = generate_sparse_adtype(adtype)
 
     if f.grad === nothing
-        extras_grad = prepare_gradient(_f, adtype, x)
+        extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
         function grad(res, θ)
-            gradient!(_f, res, adtype, θ, extras_grad)
+            gradient!(_f, res, adtype.dense_ad, θ, extras_grad)
         end
     else
         grad = (G, θ, args...) -> f.grad(G, θ, p, args...)
@@ -367,9 +367,9 @@ function OptimizationBase.instantiate_function(
     adtype, soadtype = generate_sparse_adtype(adtype)
 
     if f.grad === nothing
-        extras_grad = prepare_gradient(_f, adtype, x)
+        extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
         function grad(θ)
-            gradient(_f, adtype, θ, extras_grad)
+            gradient(_f, adtype.dense_ad, θ, extras_grad)
         end
     else
         grad = (θ, args...) -> f.grad(θ, p, args...)
