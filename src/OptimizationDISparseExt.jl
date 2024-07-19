@@ -15,7 +15,12 @@ function generate_sparse_adtype(adtype)
        adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
         adtype = AutoSparse(adtype.dense_ad; sparsity_detector = TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm())
-        if !(adtype.dense_ad isa SciMLBase.NoAD) &&
+        if adtype.dense_ad isa ADTypes.AutoFiniteDiff
+            soadtype = AutoSparse(
+                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
+                sparsity_detector = TracerSparsityDetector(),
+                coloring_algorithm = GreedyColoringAlgorithm())
+        elseif !(adtype.dense_ad isa SciMLBase.NoAD) &&
            ADTypes.mode(adtype.dense_ad) isa ADTypes.ForwardMode
             soadtype = AutoSparse(
                 DifferentiationInterface.SecondOrder(adtype.dense_ad, AutoReverseDiff()),
@@ -32,7 +37,12 @@ function generate_sparse_adtype(adtype)
            !(adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm)
         adtype = AutoSparse(adtype.dense_ad; sparsity_detector = TracerSparsityDetector(),
             coloring_algorithm = adtype.coloring_algorithm)
-        if !(adtype.dense_ad isa SciMLBase.NoAD) &&
+        if adtype.dense_ad isa ADTypes.AutoFiniteDiff
+            soadtype = AutoSparse(
+                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
+                sparsity_detector = TracerSparsityDetector(),
+                coloring_algorithm = adtype.coloring_algorithm)
+        elseif !(adtype.dense_ad isa SciMLBase.NoAD) &&
            ADTypes.mode(adtype.dense_ad) isa ADTypes.ForwardMode
             soadtype = AutoSparse(
                 DifferentiationInterface.SecondOrder(adtype.dense_ad, AutoReverseDiff()),
@@ -49,7 +59,12 @@ function generate_sparse_adtype(adtype)
            adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
         adtype = AutoSparse(adtype.dense_ad; sparsity_detector = adtype.sparsity_detector,
             coloring_algorithm = GreedyColoringAlgorithm())
-        if !(adtype.dense_ad isa SciMLBase.NoAD) &&
+        if adtype.dense_ad isa ADTypes.AutoFiniteDiff
+            soadtype = AutoSparse(
+                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
+                sparsity_detector = adtype.sparsity_detector,
+                coloring_algorithm = GreedyColoringAlgorithm())
+        elseif !(adtype.dense_ad isa SciMLBase.NoAD) &&
            ADTypes.mode(adtype.dense_ad) isa ADTypes.ForwardMode
             soadtype = AutoSparse(
                 DifferentiationInterface.SecondOrder(adtype.dense_ad, AutoReverseDiff()),
@@ -63,7 +78,12 @@ function generate_sparse_adtype(adtype)
                 coloring_algorithm = GreedyColoringAlgorithm())
         end
     else
-        if !(adtype.dense_ad isa SciMLBase.NoAD) &&
+        if adtype.dense_ad isa ADTypes.AutoFiniteDiff
+            soadtype = AutoSparse(
+                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
+                sparsity_detector = adtype.sparsity_detector,
+                coloring_algorithm = adtype.coloring_algorithm)
+        elseif !(adtype.dense_ad isa SciMLBase.NoAD) &&
            ADTypes.mode(adtype.dense_ad) isa ADTypes.ForwardMode
             soadtype = AutoSparse(
                 DifferentiationInterface.SecondOrder(adtype.dense_ad, AutoReverseDiff()),
@@ -80,7 +100,7 @@ function generate_sparse_adtype(adtype)
     return adtype, soadtype
 end
 
-function OptimizationBase.instantiate_function(
+function instantiate_function(
         f::OptimizationFunction{true}, x, adtype::ADTypes.AutoSparse{<:AbstractADType},
         p = SciMLBase.NullParameters(), num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
@@ -108,9 +128,9 @@ function OptimizationBase.instantiate_function(
     end
 
     if f.hv === nothing
-        extras_hvp = prepare_hvp(_f, soadtype, x, rand(size(x)))
+        extras_hvp = prepare_hvp(_f, soadtype.dense_ad, x, rand(size(x)))
         hv = function (H, θ, v, args...)
-            hvp!(_f, H, soadtype, θ, v, extras_hvp)
+            hvp!(_f, H, soadtype.dense_ad, θ, v, extras_hvp)
         end
     else
         hv = f.hv
@@ -168,7 +188,7 @@ function OptimizationBase.instantiate_function(
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(
+function instantiate_function(
         f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
         adtype::ADTypes.AutoSparse{<:AbstractADType}, num_cons = 0)
     x = cache.u0
@@ -198,9 +218,9 @@ function OptimizationBase.instantiate_function(
     end
 
     if f.hv === nothing
-        extras_hvp = prepare_hvp(_f, soadtype, x, rand(size(x)))
+        extras_hvp = prepare_hvp(_f, soadtype.dense_ad, x, rand(size(x)))
         hv = function (H, θ, v, args...)
-            hvp!(_f, H, soadtype, θ, v, extras_hvp)
+            hvp!(_f, H, soadtype.dense_ad, θ, v, extras_hvp)
         end
     else
         hv = f.hv
@@ -258,7 +278,7 @@ function OptimizationBase.instantiate_function(
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(
+function instantiate_function(
         f::OptimizationFunction{false}, x, adtype::ADTypes.AutoSparse{<:AbstractADType},
         p = SciMLBase.NullParameters(), num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
@@ -286,9 +306,9 @@ function OptimizationBase.instantiate_function(
     end
 
     if f.hv === nothing
-        extras_hvp = prepare_hvp(_f, soadtype, x, rand(size(x)))
+        extras_hvp = prepare_hvp(_f, soadtype.dense_ad, x, rand(size(x)))
         hv = function (θ, v, args...)
-            hvp(_f, soadtype, θ, v, extras_hvp)
+            hvp(_f, soadtype.dense_ad, θ, v, extras_hvp)
         end
     else
         hv = f.hv
@@ -348,7 +368,7 @@ function OptimizationBase.instantiate_function(
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(
+function instantiate_function(
         f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache,
         adtype::ADTypes.AutoSparse{<:AbstractADType}, num_cons = 0)
     x = cache.u0
@@ -378,9 +398,9 @@ function OptimizationBase.instantiate_function(
     end
 
     if f.hv === nothing
-        extras_hvp = prepare_hvp(_f, soadtype, x, rand(size(x)))
+        extras_hvp = prepare_hvp(_f, soadtype.dense_ad, x, rand(size(x)))
         hv = function (θ, v, args...)
-            hvp(_f, soadtype, θ, v, extras_hvp)
+            hvp(_f, soadtype.dense_ad, θ, v, extras_hvp)
         end
     else
         hv = f.hv

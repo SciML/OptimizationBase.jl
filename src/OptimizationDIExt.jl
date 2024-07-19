@@ -9,7 +9,7 @@ import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp,
                                  hvp, jacobian
 using ADTypes, SciMLBase
 
-function OptimizationBase.instantiate_function(
+function instantiate_function(
         f::OptimizationFunction{true}, x, adtype::ADTypes.AbstractADType,
         p = SciMLBase.NullParameters(), num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
@@ -103,7 +103,7 @@ function OptimizationBase.instantiate_function(
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(
+function instantiate_function(
         f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
         adtype::ADTypes.AbstractADType, num_cons = 0)
     x = cache.u0
@@ -199,7 +199,7 @@ function OptimizationBase.instantiate_function(
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(
+function instantiate_function(
         f::OptimizationFunction{false}, x, adtype::ADTypes.AbstractADType,
         p = SciMLBase.NullParameters(), num_cons = 0)
     _f = (θ, args...) -> first(f.f(θ, p, args...))
@@ -295,7 +295,7 @@ function OptimizationBase.instantiate_function(
         lag_h, f.lag_hess_prototype)
 end
 
-function OptimizationBase.instantiate_function(
+function instantiate_function(
         f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache,
         adtype::ADTypes.AbstractADType, num_cons = 0)
     x = cache.u0
