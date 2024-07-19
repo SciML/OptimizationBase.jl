@@ -108,11 +108,8 @@ function OptimizationBase.instantiate_function(
     end
 
     if f.hv === nothing
-        extras_hvp = nothing
+        extras_hvp = prepare_hvp(_f, soadtype, x, rand(size(x)))
         hv = function (H, θ, v, args...)
-            if extras_hvp === nothing
-                global extras_hvp = prepare_hvp(_f, soadtype, x, v)
-            end
             hvp!(_f, H, soadtype, θ, v, extras_hvp)
         end
     else
@@ -201,11 +198,8 @@ function OptimizationBase.instantiate_function(
     end
 
     if f.hv === nothing
-        extras_hvp = nothing
+        extras_hvp = prepare_hvp(_f, soadtype, x, rand(size(x)))
         hv = function (H, θ, v, args...)
-            if extras_hvp === nothing
-                global extras_hvp = prepare_hvp(_f, soadtype, x, v)
-            end
             hvp!(_f, H, soadtype, θ, v, extras_hvp)
         end
     else
@@ -292,11 +286,8 @@ function OptimizationBase.instantiate_function(
     end
 
     if f.hv === nothing
-        extras_hvp = nothing
+        extras_hvp = prepare_hvp(_f, soadtype, x, rand(size(x)))
         hv = function (θ, v, args...)
-            if extras_hvp === nothing
-                global extras_hvp = prepare_hvp(_f, soadtype, x, v)
-            end
             hvp(_f, soadtype, θ, v, extras_hvp)
         end
     else
@@ -387,11 +378,8 @@ function OptimizationBase.instantiate_function(
     end
 
     if f.hv === nothing
-        extras_hvp = nothing
+        extras_hvp = prepare_hvp(_f, soadtype, x, rand(size(x)))
         hv = function (θ, v, args...)
-            if extras_hvp === nothing
-                global extras_hvp = prepare_hvp(_f, soadtype, x, v)
-            end
             hvp(_f, soadtype, θ, v, extras_hvp)
         end
     else
