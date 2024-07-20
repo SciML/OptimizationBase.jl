@@ -4,11 +4,11 @@ import OptimizationBase, OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase
 import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.ADTypes: AutoModelingToolkit, AutoSymbolics, AutoSparse
-isdefined(Base, :get_extension) ? (using ModelingToolkit) : (using ..ModelingToolkit)
+using ModelingToolkit
 
 function OptimizationBase.instantiate_function(
-        f, x, adtype::AutoSparse{<:AutoSymbolics, S, C}, p,
-        num_cons = 0) where {S, C}
+        f::OptimizationFunction{true}, x, adtype::AutoSparse{<:AutoSymbolics}, p,
+        num_cons = 0)
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, x, p;
@@ -52,8 +52,9 @@ function OptimizationBase.instantiate_function(
         observed = f.observed)
 end
 
-function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInitCache,
-        adtype::AutoSparse{<:AutoSymbolics, S, C}, num_cons = 0) where {S, C}
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
+        adtype::AutoSparse{<:AutoSymbolics}, num_cons = 0)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, cache.u0,
@@ -98,7 +99,8 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
         observed = f.observed)
 end
 
-function OptimizationBase.instantiate_function(f, x, adtype::AutoSymbolics, p,
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, x, adtype::AutoSymbolics, p,
         num_cons = 0)
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
@@ -143,7 +145,8 @@ function OptimizationBase.instantiate_function(f, x, adtype::AutoSymbolics, p,
         observed = f.observed)
 end
 
-function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInitCache,
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
         adtype::AutoSymbolics, num_cons = 0)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 

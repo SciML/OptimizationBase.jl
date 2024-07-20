@@ -136,7 +136,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
             end
             Enzyme.make_zero!(y)
             Enzyme.autodiff(Enzyme.Forward, f.cons, BatchDuplicated(y, Jaccache),
-                BatchDuplicated(θ, seeds), Const(p), Const.(args)...)[1]
+                BatchDuplicated(θ, seeds), Const(p), Const.(args)...)
             for i in 1:length(θ)
                 if J isa Vector
                     J[i] = Jaccache[i][1]
@@ -257,7 +257,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
             end
             Enzyme.make_zero!(y)
             Enzyme.autodiff(Enzyme.Forward, f.cons, BatchDuplicated(y, Jaccache),
-                BatchDuplicated(θ, seeds), Const(p), Const.(args)...)[1]
+                BatchDuplicated(θ, seeds), Const(p), Const.(args)...)
             for i in 1:length(θ)
                 if J isa Vector
                     J[i] = Jaccache[i][1]

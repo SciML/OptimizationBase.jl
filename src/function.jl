@@ -43,7 +43,7 @@ function that is not defined, an error is thrown.
 For more information on the use of automatic differentiation, see the
 documentation of the `AbstractADType` types.
 """
-function instantiate_function(f, x, ::SciMLBase.NoAD,
+function instantiate_function(f::OptimizationFunction{true}, x, ::SciMLBase.NoAD,
         p, num_cons = 0)
     grad = f.grad === nothing ? nothing : (G, x, args...) -> f.grad(G, x, p, args...)
     hess = f.hess === nothing ? nothing : (H, x, args...) -> f.hess(H, x, p, args...)
@@ -72,7 +72,7 @@ function instantiate_function(f, x, ::SciMLBase.NoAD,
         observed = f.observed)
 end
 
-function instantiate_function(f, cache::ReInitCache, ::SciMLBase.NoAD,
+function instantiate_function(f::OptimizationFunction{true}, cache::ReInitCache, ::SciMLBase.NoAD,
         num_cons = 0)
     grad = f.grad === nothing ? nothing : (G, x, args...) -> f.grad(G, x, cache.p, args...)
     hess = f.hess === nothing ? nothing : (H, x, args...) -> f.hess(H, x, cache.p, args...)
@@ -101,7 +101,7 @@ function instantiate_function(f, cache::ReInitCache, ::SciMLBase.NoAD,
         observed = f.observed)
 end
 
-function instantiate_function(f, x, adtype::ADTypes.AbstractADType,
+function instantiate_function(f::OptimizationFunction, x, adtype::ADTypes.AbstractADType,
         p, num_cons = 0)
     adtypestr = string(adtype)
     _strtind = findfirst('.', adtypestr)
