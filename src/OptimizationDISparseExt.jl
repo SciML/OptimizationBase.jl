@@ -259,9 +259,9 @@ function instantiate_function(
     cons_jac_prototype = f.cons_jac_prototype
     cons_jac_colorvec = f.cons_jac_colorvec
     if cons !== nothing && f.cons_j === nothing
-        extras_jac = prepare_jacobian(cons_oop, adtype, x)
+        extras_jac = prepare_jacobian(cons, adtype, x)
         function cons_j(θ)
-            J = jacobian(cons_oop, adtype, θ, extras_jac)
+            J = jacobian(cons, adtype, θ, extras_jac)
             if size(J, 1) == 1
                 J = vec(J)
             end
@@ -274,7 +274,7 @@ function instantiate_function(
     conshess_sparsity = f.cons_hess_prototype
     conshess_colors = f.cons_hess_colorvec
     if cons !== nothing && f.cons_h === nothing
-        fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
+        fncs = [(x) -> cons(x)[i] for i in 1:num_cons]
         extras_cons_hess = prepare_hessian.(fncs, Ref(soadtype), Ref(x))
 
         function cons_h(θ)
