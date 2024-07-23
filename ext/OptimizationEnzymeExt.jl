@@ -200,7 +200,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
     p = cache.p
     x = cache.u0
 
-    return instantiate_function(f, x, adtype, p, num_cons)
+    return OptimizationBase.instantiate_function(f, x, adtype, p, num_cons)
 end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x,
@@ -330,7 +330,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
     p = cache.p
     x = cache.u0
 
-    return instantiate_function(f, x, adtype, p, num_cons)
+    return OptimizationBase.instantiate_function(f, x, adtype, p, num_cons)
 end
 
 end
