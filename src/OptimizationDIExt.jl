@@ -50,7 +50,7 @@ function instantiate_function(
     end
 
     if f.hv === nothing
-        extras_hvp = prepare_hvp(_f, soadtype, x, rand(size(x)))
+        extras_hvp = prepare_hvp(_f, soadtype, x, zeros(eltype(x), size(x)))
         hv = function (H, θ, v)
             hvp!(_f, H, soadtype, θ, v, extras_hvp)
         end
@@ -161,7 +161,7 @@ function instantiate_function(
     end
 
     if f.hv === nothing
-        extras_hvp = prepare_hvp(_f, soadtype, x, rand(size(x)))
+        extras_hvp = prepare_hvp(_f, soadtype, x, zeros(eltype(x), size(x)))
         function hv(θ, v)
             hvp(_f, soadtype, θ, v, extras_hvp)
         end

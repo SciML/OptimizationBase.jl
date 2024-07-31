@@ -17,7 +17,7 @@ using Core: Vararg
     end
 end
 
-function inner_grad(θ, bθ, f, p, args::Vararg{Any, N}) where {N}
+function inner_grad(θ, bθ, f, p)
     Enzyme.autodiff_deferred(Enzyme.Reverse,
         Const(firstapply),
         Active,
@@ -26,6 +26,16 @@ function inner_grad(θ, bθ, f, p, args::Vararg{Any, N}) where {N}
         Const(p)
     ),
     return nothing
+end
+
+function inner_grad_primal(θ, bθ, f, p)
+    Enzyme.autodiff_deferred(Enzyme.ReverseWithPrimal,
+        Const(firstapply),
+        Active,
+        Const(f),
+        Enzyme.Duplicated(θ, bθ),
+        Const(p)
+    )[2]
 end
 
 function hv_f2_alloc(x, f, p)
@@ -41,13 +51,13 @@ function hv_f2_alloc(x, f, p)
 end
 
 function inner_cons(x, fcons::Function, p::Union{SciMLBase.NullParameters, Nothing},
-        num_cons::Int, i::Int, args::Vararg{Any, N}) where {N}
+        num_cons::Int, i::Int)
     res = zeros(eltype(x), num_cons)
     fcons(res, x, p)
     return res[i]
 end
 
-function cons_f2(x, dx, fcons, p, num_cons, i, args::Vararg{Any, N}) where {N}
+function cons_f2(x, dx, fcons, p, num_cons, i)
     Enzyme.autodiff_deferred(Enzyme.Reverse, inner_cons, Active, Enzyme.Duplicated(x, dx),
         Const(fcons), Const(p), Const(num_cons), Const(i))
     return nothing
@@ -55,11 +65,11 @@ end
 
 function inner_cons_oop(
         x::Vector{T}, fcons::Function, p::Union{SciMLBase.NullParameters, Nothing},
-        i::Int, args::Vararg{Any, N}) where {T, N}
+        i::Int) where {T}
     return fcons(x, p)[i]
 end
 
-function cons_f2_oop(x, dx, fcons, p, i, args::Vararg{Any, N}) where {N}
+function cons_f2_oop(x, dx, fcons, p, i)
     Enzyme.autodiff_deferred(
         Enzyme.Reverse, inner_cons_oop, Active, Enzyme.Duplicated(x, dx),
         Const(fcons), Const(p), Const(i))
@@ -84,17 +94,38 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         grad = (G, θ) -> f.grad(G, θ, p)
     end
 
-    if f.hess === nothing
-        function hess(res, θ)
-            vdθ = Tuple((Array(r) for r in eachrow(I(length(θ)) * one(eltype(θ)))))
+    function fg!(res, θ)
+        Enzyme.make_zero!(res)
+        y = Enzyme.autodiff(Enzyme.ReverseWithPrimal,
+            Const(firstapply),
+            Active,
+            Const(f.f),
+            Enzyme.Duplicated(θ, res),
+            Const(p)
+        )[2]
+        return y
+    end
 
-            bθ = zeros(eltype(θ), length(θ))
-            vdbθ = Tuple(zeros(eltype(θ), length(θ)) for i in eachindex(θ))
+    if f.hess === nothing
+        vdθ = Tuple((Array(r) for r in eachrow(I(length(x)) * one(eltype(x)))))
+        bθ = zeros(eltype(x), length(x))
+
+        if f.hess_prototype === nothing
+            vdbθ = Tuple(zeros(eltype(x), length(x)) for i in eachindex(x))
+        else
+            #useless right now, looks like there is no way to tell Enzyme the sparsity pattern?
+            vdbθ = Tuple((copy(r) for r in eachrow(f.hess_prototype)))
+        end
+
+        function hess(res, θ)
+            Enzyme.make_zero!.(vdθ)
+            Enzyme.make_zero!(bθ)
+            Enzyme.make_zero!.(vdbθ)
 
             Enzyme.autodiff(Enzyme.Forward,
                 inner_grad,
                 Enzyme.BatchDuplicated(θ, vdθ),
-                Enzyme.BatchDuplicated(bθ, vdbθ),
+                Enzyme.BatchDuplicatedNoNeed(bθ, vdbθ),
                 Const(f.f),
                 Const(p)
             )
@@ -105,6 +136,10 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         end
     else
         hess = (H, θ) -> f.hess(H, θ, p)
+    end
+
+    function fgh!(G, H, θ)
+         
     end
 
     if f.hv === nothing
@@ -145,6 +180,14 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         end
     else
         cons_j = (J, θ) -> f.cons_j(J, θ, p)
+    end
+
+    if cons !== nothing && f.cons_vjp === nothing
+        function cons_vjp(res, θ, v)
+            
+        end
+    else
+        cons_vjp = (θ, σ) -> f.cons_vjp(θ, σ, p)
     end
 
     if cons !== nothing && f.cons_h === nothing

@@ -125,12 +125,14 @@ function instantiate_function(
         function hess(res, θ)
             hessian!(_f, res, soadtype, θ, extras_hess)
         end
+        hess_sparsity = extras_hess.sparsity
+        hess_colors = extras_hess.colors
     else
         hess = (H, θ) -> f.hess(H, θ, p)
     end
 
     if f.hv === nothing
-        extras_hvp = prepare_hvp(_f, soadtype.dense_ad, x, rand(size(x)))
+        extras_hvp = prepare_hvp(_f, soadtype.dense_ad, x, zeros(eltype(x), size(x)))
         hv = function (H, θ, v)
             hvp!(_f, H, soadtype.dense_ad, θ, v, extras_hvp)
         end
@@ -162,6 +164,8 @@ function instantiate_function(
                 J = vec(J)
             end
         end
+        cons_jac_prototype = extras_jac.sparsity
+        cons_jac_colorvec = extras_jac.colors
     else
         cons_j = (J, θ) -> f.cons_j(J, θ, p)
     end
@@ -169,20 +173,75 @@ function instantiate_function(
     conshess_sparsity = f.cons_hess_prototype
     conshess_colors = f.cons_hess_colorvec
     if cons !== nothing && f.cons_h === nothing
-        fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
-        extras_cons_hess = prepare_hessian.(fncs, Ref(soadtype), Ref(x))
-
+        fncs = [@closure (x) -> cons_oop(x)[i] for i in 1:num_cons]
+        extras_cons_hess = Vector{DifferentiationInterface.SparseHessianExtras}(undef, length(fncs))
+        for ind in 1:num_cons
+            extras_cons_hess[ind] = prepare_hessian(fncs[ind], soadtype, x)
+        end
+        conshess_sparsity = [sum(sparse, cons)]
+        conshess_colors = getfield.(extras_cons_hess, Ref(:colors))
         function cons_h(H, θ)
             for i in 1:num_cons
-                hessian!(fncs[i], H[i], soadtype, θ, extras_cons_hess[i])
+                hessian!(fncs[i], H[i], soadtype, θ)
             end
         end
     else
         cons_h = (res, θ) -> f.cons_h(res, θ, p)
     end
 
+    function lagrangian(x, σ = one(eltype(x)))
+        θ = x[1:end-num_cons]
+        λ = x[end-num_cons+1:end]
+        return σ * _f(θ) + dot(λ, cons_oop(θ)) 
+    end
+
     if f.lag_h === nothing
-        lag_h = nothing # Consider implementing this
+        lag_extras = prepare_hessian(lagrangian, soadtype, vcat(x, ones(eltype(x), num_cons)))
+        lag_hess_prototype = lag_extras.sparsity
+        
+        function lag_h(H::Matrix, θ, σ, λ)
+            @show size(H)
+            @show size(θ)
+            @show size(λ)
+            if σ == zero(eltype(θ))
+                cons_h(H, θ)
+                H *= λ
+            else
+                hessian!(lagrangian, H, soadtype, vcat(θ, λ), lag_extras)
+            end
+        end
+
+        function lag_h(h, θ, σ, λ)
+            # @show h
+            sparseHproto = findnz(lag_extras.sparsity)
+            H = sparse(sparseHproto[1], sparseHproto[2], zeros(eltype(θ), length(sparseHproto[1])))
+            if σ == zero(eltype(θ))
+                cons_h(H, θ)
+                H *= λ
+            else
+                hessian!(lagrangian, H, soadtype, vcat(θ, λ), lag_extras)
+                k = 0
+                rows, cols, _ = findnz(H)
+                for (i, j) in zip(rows, cols)
+                    if i <= j
+                        k += 1
+                        h[k] = σ * H[i, j]
+                    end
+                end
+                k = 0
+                for λi in λ
+                    if Hi isa SparseMatrixCSC
+                        rows, cols, _ = findnz(Hi)
+                        for (i, j) in zip(rows, cols)
+                            if i <= j
+                                k += 1
+                                h[k] += λi * Hi[i, j]
+                            end
+                        end
+                    end
+                end
+            end
+        end
     else
         lag_h = (res, θ, σ, μ) -> f.lag_h(res, θ, σ, μ, p)
     end
@@ -195,7 +254,7 @@ function instantiate_function(
         cons_hess_prototype = conshess_sparsity,
         cons_hess_colorvec = conshess_colors,
         lag_h,
-        lag_hess_prototype = f.lag_hess_prototype,
+        lag_hess_prototype = lag_hess_prototype,
         sys = f.sys,
         expr = f.expr,
         cons_expr = f.cons_expr)
@@ -240,7 +299,7 @@ function instantiate_function(
     end
 
     if f.hv === nothing
-        extras_hvp = prepare_hvp(_f, soadtype.dense_ad, x, rand(size(x)))
+        extras_hvp = prepare_hvp(_f, soadtype.dense_ad, x, zeros(eltype(x), size(x)))
         function hv(θ, v)
             hvp(_f, soadtype.dense_ad, θ, v, extras_hvp)
         end
