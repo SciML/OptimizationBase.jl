@@ -3,7 +3,7 @@ module OptimizationEnzymeExt
 import OptimizationBase, OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.SciMLBase
-import OptimizationBase.LinearAlgebra: I
+import OptimizationBase.LinearAlgebra: I, dot
 import OptimizationBase.ADTypes: AutoEnzyme
 using Enzyme
 using Core: Vararg
@@ -73,6 +73,18 @@ function cons_f2_oop(x, dx, fcons, p, i)
     Enzyme.autodiff_deferred(
         Enzyme.Reverse, inner_cons_oop, Active, Enzyme.Duplicated(x, dx),
         Const(fcons), Const(p), Const(i))
+    return nothing
+end
+
+function lagrangian(x, _f::Function, cons::Function, p, λ, σ = one(eltype(x)))::Float64
+    res = zeros(eltype(x), length(λ))
+    cons(res, x, p)
+    return σ * _f(x, p) + dot(λ, res)
+end
+
+function lag_grad(x, dx, lagrangian::Function, _f::Function, cons::Function, p, σ, λ)
+    Enzyme.autodiff_deferred(Enzyme.Reverse, lagrangian, Active, Enzyme.Duplicated(x, dx),
+        Const(_f), Const(cons), Const(p), Const(λ), Const(σ))
     return nothing
 end
 
@@ -219,7 +231,40 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     end
 
     if f.lag_h === nothing
-        lag_h = nothing # Consider implementing this
+        lag_vdθ = Tuple((Array(r) for r in eachrow(I(length(x)) * one(eltype(x)))))
+        lag_bθ = zeros(eltype(x), length(x))
+
+        if f.hess_prototype === nothing
+            lag_vdbθ = Tuple(zeros(eltype(x), length(x)) for i in eachindex(x))
+        else
+            #useless right now, looks like there is no way to tell Enzyme the sparsity pattern?
+            lag_vdbθ = Tuple((copy(r) for r in eachrow(f.hess_prototype)))
+        end
+
+        function lag_h(h, θ, σ, μ)
+            Enzyme.make_zero!.(lag_vdθ)
+            Enzyme.make_zero!(lag_bθ)
+            Enzyme.make_zero!.(lag_vdbθ)
+
+            Enzyme.autodiff(Enzyme.Forward,
+                lag_grad,
+                Enzyme.BatchDuplicated(θ, lag_vdθ),
+                Enzyme.BatchDuplicatedNoNeed(lag_bθ, lag_vdbθ),
+                Const(lagrangian),
+                Const(f.f),
+                Const(f.cons),
+                Const(p),
+                Const(σ),
+                Const(μ)
+            )
+            k = 0
+
+            for i in eachindex(θ)
+                vec_lagv = lag_vdbθ[i]
+                h[k+1:k+i] .= @view(vec_lagv[1:i])
+                k += i
+            end
+        end
     else
         lag_h = (θ, σ, μ) -> f.lag_h(θ, σ, μ, p)
     end

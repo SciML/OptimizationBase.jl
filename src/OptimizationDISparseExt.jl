@@ -174,12 +174,12 @@ function instantiate_function(
     conshess_colors = f.cons_hess_colorvec
     if cons !== nothing && f.cons_h === nothing
         fncs = [@closure (x) -> cons_oop(x)[i] for i in 1:num_cons]
-        extras_cons_hess = Vector{DifferentiationInterface.SparseHessianExtras}(undef, length(fncs))
-        for ind in 1:num_cons
-            extras_cons_hess[ind] = prepare_hessian(fncs[ind], soadtype, x)
-        end
-        conshess_sparsity = [sum(sparse, cons)]
-        conshess_colors = getfield.(extras_cons_hess, Ref(:colors))
+        # extras_cons_hess = Vector(undef, length(fncs))
+        # for ind in 1:num_cons
+        #     extras_cons_hess[ind] = prepare_hessian(fncs[ind], soadtype, x)
+        # end
+        # conshess_sparsity = getfield.(extras_cons_hess, :sparsity)
+        # conshess_colors = getfield.(extras_cons_hess, :colors)
         function cons_h(H, θ)
             for i in 1:num_cons
                 hessian!(fncs[i], H[i], soadtype, θ)
@@ -189,56 +189,33 @@ function instantiate_function(
         cons_h = (res, θ) -> f.cons_h(res, θ, p)
     end
 
-    function lagrangian(x, σ = one(eltype(x)))
-        θ = x[1:end-num_cons]
-        λ = x[end-num_cons+1:end]
-        return σ * _f(θ) + dot(λ, cons_oop(θ)) 
+    function lagrangian(x, σ = one(eltype(x)), λ = ones(eltype(x), num_cons))
+        return σ * _f(x) + dot(λ, cons_oop(x))
     end
 
+    lag_hess_prototype = f.lag_hess_prototype
     if f.lag_h === nothing
-        lag_extras = prepare_hessian(lagrangian, soadtype, vcat(x, ones(eltype(x), num_cons)))
+        lag_extras = prepare_hessian(lagrangian, soadtype, x)
         lag_hess_prototype = lag_extras.sparsity
-        
-        function lag_h(H::Matrix, θ, σ, λ)
-            @show size(H)
-            @show size(θ)
-            @show size(λ)
+
+        function lag_h(H::AbstractMatrix, θ, σ, λ)
             if σ == zero(eltype(θ))
                 cons_h(H, θ)
                 H *= λ
             else
-                hessian!(lagrangian, H, soadtype, vcat(θ, λ), lag_extras)
+                hessian!(x -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
             end
         end
 
         function lag_h(h, θ, σ, λ)
-            # @show h
-            sparseHproto = findnz(lag_extras.sparsity)
-            H = sparse(sparseHproto[1], sparseHproto[2], zeros(eltype(θ), length(sparseHproto[1])))
-            if σ == zero(eltype(θ))
-                cons_h(H, θ)
-                H *= λ
-            else
-                hessian!(lagrangian, H, soadtype, vcat(θ, λ), lag_extras)
-                k = 0
-                rows, cols, _ = findnz(H)
-                for (i, j) in zip(rows, cols)
-                    if i <= j
-                        k += 1
-                        h[k] = σ * H[i, j]
-                    end
-                end
-                k = 0
-                for λi in λ
-                    if Hi isa SparseMatrixCSC
-                        rows, cols, _ = findnz(Hi)
-                        for (i, j) in zip(rows, cols)
-                            if i <= j
-                                k += 1
-                                h[k] += λi * Hi[i, j]
-                            end
-                        end
-                    end
+            H = eltype(θ).(lag_hess_prototype)
+            hessian!(x -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
+            k = 0
+            rows, cols, _ = findnz(H)
+            for (i, j) in zip(rows, cols)
+                if i <= j
+                    k += 1
+                    h[k] = H[i, j]
                 end
             end
         end
