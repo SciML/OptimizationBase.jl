@@ -26,7 +26,7 @@ H2 = Array{Float64}(undef, 2, 2)
 g!(G1, x0)
 h!(H1, x0)
 
-cons = (res, x, p) -> (res .= [x[1]^2 + x[2]^2])
+cons = (res, x, p) -> (res .= [x[1]^2 + x[2]^2]; return nothing)
 optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoModelingToolkit(), cons = cons)
 optprob = OptimizationBase.instantiate_function(optf, x0,
     OptimizationBase.AutoModelingToolkit(),
@@ -47,6 +47,7 @@ optprob.cons_h(H3, x0)
 
 function con2_c(res, x, p)
     res .= [x[1]^2 + x[2]^2, x[2] * sin(x[1]) - x[1]]
+    return nothing
 end
 optf = OptimizationFunction(rosenbrock,
     OptimizationBase.AutoModelingToolkit(),
