@@ -102,7 +102,8 @@ end
 
 function instantiate_function(
         f::OptimizationFunction{true}, x, adtype::ADTypes.AutoSparse{<:AbstractADType},
-        p = SciMLBase.NullParameters(), num_cons = 0)
+        p = SciMLBase.NullParameters(), num_cons = 0;
+        cons_vjp = false, cons_jvp = false)
     function _f(θ)
         return f(θ, p)[1]
     end
@@ -118,6 +119,13 @@ function instantiate_function(
         grad = (G, θ) -> f.grad(G, θ, p)
     end
 
+    if fg == true
+        function fg!(res, θ)
+            (y, _) = value_and_gradient!(_f, res, adtype.dense_ad, θ, extras_grad)
+            return y
+        end
+    end
+
     hess_sparsity = f.hess_prototype
     hess_colors = f.hess_colorvec
     if f.hess === nothing
@@ -129,6 +137,13 @@ function instantiate_function(
         hess_colors = extras_hess.colors
     else
         hess = (H, θ) -> f.hess(H, θ, p)
+    end
+
+    if fgh == true
+        function fgh!(G, H, θ)
+            (y, _, _) = value_derivative_and_second_derivative!(_f, G, H, θ, extras_hess)
+            return y
+        end
     end
 
     if f.hv === nothing
@@ -147,10 +162,18 @@ function instantiate_function(
             f.cons(res, θ, p)
         end
 
-        function cons_oop(x)
-            _res = zeros(eltype(x), num_cons)
-            cons(_res, x)
-            return _res
+        if adtype.dense_ad isa AutoZygote && Base.PkgId(Base.UUID("e88e6eb3-aa80-5325-afca-941959d7151f"), "Zygote") in keys(Base.loaded_modules)
+            function cons_oop(x)
+                _res = Zygote.Buffer(x, num_cons)
+                cons(_res, x)
+                copy(_res)
+            end
+        else
+            function cons_oop(x)
+                _res = zeros(eltype(x), num_cons)
+                cons(_res, x)
+                return _res
+            end
         end
     end
 
@@ -170,19 +193,37 @@ function instantiate_function(
         cons_j = (J, θ) -> f.cons_j(J, θ, p)
     end
 
+    if f.cons_vjp === nothing && cons_vjp == true
+        extras_pullback = prepare_pullback(cons_oop, adtype, x)
+        function cons_vjp!(J, θ, v)
+            pullback!(cons_oop, J, adtype.dense_ad, θ, v, extras_pullback)
+        end
+    else
+        cons_vjp! = nothing
+    end
+
+    if f.cons_jvp === nothing && cons_jvp == true
+        extras_pushforward = prepare_pushforward(cons_oop, adtype, x)
+        function cons_jvp!(J, θ, v)
+            pushforward!(cons_oop, J, adtype.dense_ad, θ, v, extras_pushforward)
+        end
+    else
+        cons_jvp! = nothing
+    end
+
     conshess_sparsity = f.cons_hess_prototype
     conshess_colors = f.cons_hess_colorvec
     if cons !== nothing && f.cons_h === nothing
         fncs = [@closure (x) -> cons_oop(x)[i] for i in 1:num_cons]
-        # extras_cons_hess = Vector(undef, length(fncs))
-        # for ind in 1:num_cons
-        #     extras_cons_hess[ind] = prepare_hessian(fncs[ind], soadtype, x)
-        # end
-        # conshess_sparsity = getfield.(extras_cons_hess, :sparsity)
-        # conshess_colors = getfield.(extras_cons_hess, :colors)
+        extras_cons_hess = Vector(undef, length(fncs))
+        for ind in 1:num_cons
+            extras_cons_hess[ind] = prepare_hessian(fncs[ind], soadtype, x)
+        end
+        conshess_sparsity = getfield.(extras_cons_hess, :sparsity)
+        conshess_colors = getfield.(extras_cons_hess, :colors)
         function cons_h(H, θ)
             for i in 1:num_cons
-                hessian!(fncs[i], H[i], soadtype, θ)
+                hessian!(fncs[i], H[i], soadtype, θ, extras_cons_hess[i])
             end
         end
     else

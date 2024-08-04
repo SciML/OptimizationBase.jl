@@ -22,7 +22,8 @@ end
 
 function instantiate_function(
         f::OptimizationFunction{true}, x, adtype::ADTypes.AbstractADType,
-        p = SciMLBase.NullParameters(), num_cons = 0)
+        p = SciMLBase.NullParameters(), num_cons = 0;
+        fg = false, fgh = false, cons_vjp = false, cons_jvp = false)
     function _f(θ)
         return f(θ, p)[1]
     end
@@ -38,6 +39,13 @@ function instantiate_function(
         grad = (G, θ) -> f.grad(G, θ, p)
     end
 
+    if fg == true
+        function fg!(res, θ)
+            (y, _) = value_and_gradient!(_f, res, adtype, θ, extras_grad)
+            return y
+        end
+    end
+
     hess_sparsity = f.hess_prototype
     hess_colors = f.hess_colorvec
     if f.hess === nothing
@@ -47,6 +55,13 @@ function instantiate_function(
         end
     else
         hess = (H, θ) -> f.hess(H, θ, p)
+    end
+
+    if fgh == true
+        function fgh!(G, H, θ)
+            (y, _, _) = value_derivative_and_second_derivative!(_f, G, H, θ, extras_hess)
+            return y
+        end
     end
 
     if f.hv === nothing
@@ -65,10 +80,18 @@ function instantiate_function(
             return f.cons(res, θ, p)
         end
 
-        function cons_oop(x)
-            _res = zeros(eltype(x), num_cons)
-            cons(_res, x)
-            return _res
+        if adtype isa AutoZygote && Base.PkgId(Base.UUID("e88e6eb3-aa80-5325-afca-941959d7151f"), "Zygote") in keys(Base.loaded_modules)
+            function cons_oop(x)
+                _res = Zygote.Buffer(x, num_cons)
+                cons(_res, x)
+                copy(_res)
+            end
+        else
+            function cons_oop(x)
+                _res = zeros(eltype(x), num_cons)
+                cons(_res, x)
+                return _res
+            end
         end
     end
 
@@ -86,6 +109,24 @@ function instantiate_function(
         cons_j = (J, θ) -> f.cons_j(J, θ, p)
     end
 
+    if f.cons_vjp === nothing && cons_vjp == true
+        extras_pullback = prepare_pullback(cons_oop, adtype, x)
+        function cons_vjp!(J, θ, v)
+            pullback!(cons_oop, J, adtype, θ, v, extras_pullback)
+        end
+    else
+        cons_vjp! = nothing
+    end
+
+    if f.cons_jvp === nothing && cons_jvp == true
+        extras_pushforward = prepare_pushforward(cons_oop, adtype, x)
+        function cons_jvp!(J, θ, v)
+            pushforward!(cons_oop, J, adtype, θ, v, extras_pushforward)
+        end
+    else
+        cons_jvp! = nothing
+    end
+
     conshess_sparsity = f.cons_hess_prototype
     conshess_colors = f.cons_hess_colorvec
     if cons !== nothing && f.cons_h === nothing
@@ -101,14 +142,44 @@ function instantiate_function(
         cons_h = (res, θ) -> f.cons_h(res, θ, p)
     end
 
+    function lagrangian(x, σ = one(eltype(x)), λ = ones(eltype(x), num_cons))
+        return σ * _f(x) + dot(λ, cons_oop(x))
+    end
+
+    lag_hess_prototype = f.lag_hess_prototype
+
     if f.lag_h === nothing
-        lag_h = nothing # Consider implementing this
+        lag_extras = prepare_hessian(lagrangian, soadtype, x)
+        lag_hess_prototype = zeros(Bool, length(x), length(x))
+
+        function lag_h(H::AbstractMatrix, θ, σ, λ)
+            if σ == zero(eltype(θ))
+                cons_h(H, θ)
+                H *= λ
+            else
+                hessian!(x -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
+            end
+        end
+
+        function lag_h(h, θ, σ, λ)
+            H = eltype(θ).(lag_hess_prototype)
+            hessian!(x -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
+            k = 0
+            rows, cols, _ = findnz(H)
+            for (i, j) in zip(rows, cols)
+                if i <= j
+                    k += 1
+                    h[k] = H[i, j]
+                end
+            end
+        end
     else
         lag_h = (res, θ, σ, μ) -> f.lag_h(res, θ, σ, μ, p)
     end
 
     return OptimizationFunction{true}(f.f, adtype; grad = grad, hess = hess, hv = hv,
-        cons = cons, cons_j = cons_j, cons_h = cons_h,
+        cons = cons, cons_j = cons_j, cons_h = cons_h, 
+        cons_vjp = cons_vjp!, cons_jvp = cons_jvp!,
         hess_prototype = hess_sparsity,
         hess_colorvec = hess_colors,
         cons_jac_prototype = cons_jac_prototype,
@@ -116,7 +187,7 @@ function instantiate_function(
         cons_hess_prototype = conshess_sparsity,
         cons_hess_colorvec = conshess_colors,
         lag_h,
-        lag_hess_prototype = f.lag_hess_prototype,
+        lag_hess_prototype = lag_hess_prototype,
         sys = f.sys,
         expr = f.expr,
         cons_expr = f.cons_expr)
