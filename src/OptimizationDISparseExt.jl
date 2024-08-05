@@ -103,6 +103,7 @@ end
 function instantiate_function(
         f::OptimizationFunction{true}, x, adtype::ADTypes.AutoSparse{<:AbstractADType},
         p = SciMLBase.NullParameters(), num_cons = 0;
+        fg = false, fgh = false,
         cons_vjp = false, cons_jvp = false)
     function _f(θ)
         return f(θ, p)[1]
@@ -119,7 +120,7 @@ function instantiate_function(
         grad = (G, θ) -> f.grad(G, θ, p)
     end
 
-    if fg == true
+    if fg == true && f.fg !== nothing
         function fg!(res, θ)
             (y, _) = value_and_gradient!(_f, res, adtype.dense_ad, θ, extras_grad)
             return y
@@ -139,7 +140,7 @@ function instantiate_function(
         hess = (H, θ) -> f.hess(H, θ, p)
     end
 
-    if fgh == true
+    if fgh == true && f.fgh !== nothing
         function fgh!(G, H, θ)
             (y, _, _) = value_derivative_and_second_derivative!(_f, G, H, θ, extras_hess)
             return y
@@ -162,18 +163,14 @@ function instantiate_function(
             f.cons(res, θ, p)
         end
 
-        if adtype.dense_ad isa AutoZygote && Base.PkgId(Base.UUID("e88e6eb3-aa80-5325-afca-941959d7151f"), "Zygote") in keys(Base.loaded_modules)
-            function cons_oop(x)
-                _res = Zygote.Buffer(x, num_cons)
-                cons(_res, x)
-                copy(_res)
-            end
-        else
-            function cons_oop(x)
-                _res = zeros(eltype(x), num_cons)
-                cons(_res, x)
-                return _res
-            end
+        function cons_oop(x)
+            _res = zeros(eltype(x), num_cons)
+            cons(_res, x)
+            return _res
+        end
+
+        function lagrangian(x, σ = one(eltype(x)), λ = ones(eltype(x), num_cons))
+            return σ * _f(x) + dot(λ, cons_oop(x))
         end
     end
 
@@ -230,12 +227,8 @@ function instantiate_function(
         cons_h = (res, θ) -> f.cons_h(res, θ, p)
     end
 
-    function lagrangian(x, σ = one(eltype(x)), λ = ones(eltype(x), num_cons))
-        return σ * _f(x) + dot(λ, cons_oop(x))
-    end
-
     lag_hess_prototype = f.lag_hess_prototype
-    if f.lag_h === nothing
+    if cons !== nothing && f.lag_h === nothing
         lag_extras = prepare_hessian(lagrangian, soadtype, x)
         lag_hess_prototype = lag_extras.sparsity
 

@@ -191,27 +191,40 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     end
 
     if cons !== nothing && f.cons_j === nothing
-        seeds = Tuple((Array(r) for r in eachrow(I(length(x)) * one(eltype(x)))))
-        Jaccache = Tuple(zeros(eltype(x), num_cons) for i in 1:length(x))
+        if num_cons > length(x)
+            seeds = Enzyme.onehot(x)
+            Jaccache = Tuple(zeros(eltype(x), num_cons) for i in 1:length(x))
+        else
+            seeds = Enzyme.onehot(zeros(eltype(x), num_cons))
+            Jaccache = Tuple(zero(x) for i in 1:num_cons)
+        end
+        
         y = zeros(eltype(x), num_cons)
 
         function cons_j(J, θ)
-            for i in 1:length(θ)
+            for i in eachindex(Jaccache)
                 Enzyme.make_zero!(Jaccache[i])
             end
             Enzyme.make_zero!(y)
             if num_cons > length(θ)
                 Enzyme.autodiff(Enzyme.Forward, f.cons, BatchDuplicated(y, Jaccache),
                     BatchDuplicated(θ, seeds), Const(p))
+                for i in eachindex(θ)
+                    if J isa Vector
+                        J[i] = Jaccache[i][1]
+                    else
+                        copyto!(@view(J[:, i]), Jaccache[i])
+                    end
+                end
             else
                 Enzyme.autodiff(Enzyme.Reverse, f.cons, BatchDuplicated(y, seeds),
                     BatchDuplicated(θ, Jaccache), Const(p))
-            end
-            for i in 1:length(θ)
-                if J isa Vector
-                    J[i] = Jaccache[i][1]
-                else
-                    copyto!(@view(J[:, i]), Jaccache[i])
+                for i in 1:num_cons
+                    if J isa Vector
+                        J .= Jaccache[1]
+                    else
+                        copyto!(@view(J[i, :]), Jaccache[i])
+                    end
                 end
             end
         end
@@ -261,14 +274,13 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         cons_vdbθ = Tuple(zeros(eltype(x), length(x)) for i in eachindex(x))
 
         function cons_h(res, θ)
-            Enzyme.make_zero!(cons_bθ)
-            Enzyme.make_zero!.(cons_vdbθ)
-
             for i in 1:num_cons
+                Enzyme.make_zero!(cons_bθ)
+                Enzyme.make_zero!.(cons_vdbθ)
                 Enzyme.autodiff(Enzyme.Forward,
                     cons_f2,
                     Enzyme.BatchDuplicated(θ, cons_vdθ),
-                    Enzyme.BatchDuplicated(bθ, cons_vdbθ),
+                    Enzyme.BatchDuplicated(cons_bθ, cons_vdbθ),
                     Const(f.cons),
                     Const(p),
                     Const(num_cons),
