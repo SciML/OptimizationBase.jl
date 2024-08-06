@@ -109,7 +109,6 @@ H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
 optprob.cons_h(H3, x0)
 @test H3 == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
 
-
 G2 = Array{Float64}(undef, 2)
 H2 = Array{Float64}(undef, 2, 2)
 

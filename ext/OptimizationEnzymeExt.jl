@@ -89,7 +89,7 @@ function lag_grad(x, dx, lagrangian::Function, _f::Function, cons::Function, p, 
 end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
-        adtype::AutoEnzyme, p, num_cons = 0;  fg = false, fgh = false,)
+        adtype::AutoEnzyme, p, num_cons = 0; fg = false, fgh = false)
     if f.grad === nothing
         function grad(res, θ)
             Enzyme.make_zero!(res)
@@ -198,7 +198,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
             seeds = Enzyme.onehot(zeros(eltype(x), num_cons))
             Jaccache = Tuple(zero(x) for i in 1:num_cons)
         end
-        
+
         y = zeros(eltype(x), num_cons)
 
         function cons_j(J, θ)
@@ -243,7 +243,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
                 Const,
                 Duplicated(cons_res, v),
                 Duplicated(θ, res),
-                Const(p),
+                Const(p)
             )
         end
     else
@@ -261,7 +261,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
                 f.cons,
                 Duplicated(cons_res, res),
                 Duplicated(θ, v),
-                Const(p),
+                Const(p)
             )
         end
     else
@@ -325,7 +325,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
 
             for i in eachindex(θ)
                 vec_lagv = lag_vdbθ[i]
-                h[k+1:k+i] .= @view(vec_lagv[1:i])
+                h[(k + 1):(k + i)] .= @view(vec_lagv[1:i])
                 k += i
             end
         end
@@ -356,8 +356,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
 end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x,
-        adtype::AutoEnzyme, p,
-        num_cons = 0)
+        adtype::AutoEnzyme, p, num_cons = 0; fg = false, fgh = false)
     if f.grad === nothing
         res = zeros(eltype(x), size(x))
         function grad(θ)
@@ -375,12 +374,31 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         grad = (θ) -> f.grad(θ, p)
     end
 
-    if f.hess === nothing
-        function hess(θ)
-            vdθ = Tuple((Array(r) for r in eachrow(I(length(θ)) * one(eltype(θ)))))
+    if fg == true
+        res_fg = zeros(eltype(x), size(x))
+        function fg!(θ)
+            Enzyme.make_zero!(res_fg)
+            y = Enzyme.autodiff(Enzyme.ReverseWithPrimal,
+                Const(firstapply),
+                Active,
+                Const(f.f),
+                Enzyme.Duplicated(θ, res_fg),
+                Const(p)
+            )[2]
+            return y, res
+        end
+    else
+        fg! = nothing
+    end
 
-            bθ = zeros(eltype(θ), length(θ))
-            vdbθ = Tuple(zeros(eltype(θ), length(θ)) for i in eachindex(θ))
+    if f.hess === nothing
+        vdθ = Tuple((Array(r) for r in eachrow(I(length(x)) * one(eltype(x)))))
+        bθ = zeros(eltype(x), length(x))
+        vdbθ = Tuple(zeros(eltype(x), length(x)) for i in eachindex(x))
+
+        function hess(θ)
+            Enzyme.make_zero!(bθ)
+            Enzyme.make_zero!.(vdbθ)
 
             Enzyme.autodiff(Enzyme.Forward,
                 inner_grad,
@@ -397,9 +415,37 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         hess = (θ) -> f.hess(θ, p)
     end
 
+    if fgh == true
+        vdθ_fgh = Tuple((Array(r) for r in eachrow(I(length(x)) * one(eltype(x)))))
+        vdbθ_fgh = Tuple(zeros(eltype(x), length(x)) for i in eachindex(x))
+        G_fgh = zeros(eltype(x), length(x))
+        H_fgh = zeros(eltype(x), length(x), length(x))
+
+        function fgh!(θ)
+            Enzyme.make_zero!(G_fgh)
+            Enzyme.make_zero!(H_fgh)
+            Enzyme.make_zero!.(vdbθ_fgh)
+
+            Enzyme.autodiff(Enzyme.Forward,
+                inner_grad,
+                Enzyme.BatchDuplicated(θ, vdθ_fgh),
+                Enzyme.BatchDuplicatedNoNeed(G_fgh, vdbθ_fgh),
+                Const(f.f),
+                Const(p)
+            )
+
+            for i in eachindex(θ)
+                H_fgh[i, :] .= vdbθ_fgh[i]
+            end
+            return G_fgh, H_fgh
+        end
+    else
+        fgh! = nothing
+    end
+
     if f.hv === nothing
         function hv(θ, v)
-            Enzyme.autodiff(
+            return Enzyme.autodiff(
                 Enzyme.Forward, hv_f2_alloc, DuplicatedNoNeed, Duplicated(θ, v),
                 Const(_f), Const(f.f), Const(p)
             )[1]
@@ -411,60 +457,136 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
     if f.cons === nothing
         cons = nothing
     else
-        cons_oop = (θ) -> f.cons(θ, p)
+        function cons(θ)
+            return f.cons(θ, p)
+        end
     end
 
-    if f.cons !== nothing && f.cons_j === nothing
-        seeds = Tuple((Array(r) for r in eachrow(I(length(x)) * one(eltype(x)))))
+    if cons !== nothing && f.cons_j === nothing
+        seeds = Enzyme.onehot(x)
+        Jaccache = Tuple(zeros(eltype(x), num_cons) for i in 1:length(x))
+
         function cons_j(θ)
-            J = Enzyme.autodiff(
-                Enzyme.Forward, f.cons, BatchDuplicated(θ, seeds), Const(p))[1]
-            if num_cons == 1
-                return reduce(vcat, J)
+            for i in eachindex(Jaccache)
+                Enzyme.make_zero!(Jaccache[i])
+            end
+            y, Jaccache = Enzyme.autodiff(Enzyme.Forward, f.cons, Duplicated,
+                BatchDuplicated(θ, seeds), Const(p))
+            if size(y, 1) == 1
+                return reduce(vcat, Jaccache)
             else
-                return reduce(hcat, J)
+                return reduce(hcat, Jaccache)
             end
         end
     else
         cons_j = (θ) -> f.cons_j(θ, p)
     end
 
-    if f.cons !== nothing && f.cons_h === nothing
+    if cons !== nothing && f.cons_vjp == true
+        res_vjp = zeros(eltype(x), size(x))
+        cons_vjp_res = zeros(eltype(x), num_cons)
+
+        function cons_vjp(θ, v)
+            Enzyme.make_zero!(res_vjp)
+            Enzyme.make_zero!(cons_vjp_res)
+
+            Enzyme.autodiff(Enzyme.Reverse,
+                f.cons,
+                Const,
+                Duplicated(cons_vjp_res, v),
+                Duplicated(θ, res_vjp),
+                Const(p)
+            )
+            return res_vjp
+        end
+    else
+        cons_vjp = (θ, σ) -> f.cons_vjp(θ, σ, p)
+    end
+
+    if cons !== nothing && f.cons_jvp == true
+        res_jvp = zeros(eltype(x), size(x))
+        cons_jvp_res = zeros(eltype(x), num_cons)
+
+        function cons_jvp(θ, v)
+            Enzyme.make_zero!(res_jvp)
+            Enzyme.make_zero!(cons_jvp_res)
+
+            Enzyme.autodiff(Enzyme.Forward,
+                f.cons,
+                Duplicated(cons_jvp_res, res_jvp),
+                Duplicated(θ, v),
+                Const(p)
+            )
+            return res_jvp
+        end
+    else
+        cons_jvp = nothing
+    end
+
+    if cons !== nothing && f.cons_h === nothing
+        cons_vdθ = Tuple((Array(r) for r in eachrow(I(length(x)) * one(eltype(x)))))
+        cons_bθ = zeros(eltype(x), length(x))
+        cons_vdbθ = Tuple(zeros(eltype(x), length(x)) for i in eachindex(x))
+
         function cons_h(θ)
-            vdθ = Tuple((Array(r) for r in eachrow(I(length(θ)) * one(eltype(θ)))))
-            bθ = zeros(eltype(θ), length(θ))
-            vdbθ = Tuple(zeros(eltype(θ), length(θ)) for i in eachindex(θ))
-            res = [zeros(eltype(x), length(θ), length(θ)) for i in 1:num_cons]
-            for i in 1:num_cons
-                Enzyme.make_zero!(bθ)
-                for el in vdbθ
-                    Enzyme.make_zero!(el)
-                end
+            return map(1:num_cons) do i
+                Enzyme.make_zero!(cons_bθ)
+                Enzyme.make_zero!.(cons_vdbθ)
                 Enzyme.autodiff(Enzyme.Forward,
                     cons_f2_oop,
-                    Enzyme.BatchDuplicated(θ, vdθ),
-                    Enzyme.BatchDuplicated(bθ, vdbθ),
+                    Enzyme.BatchDuplicated(θ, cons_vdθ),
+                    Enzyme.BatchDuplicated(cons_bθ, cons_vdbθ),
                     Const(f.cons),
                     Const(p),
                     Const(i))
-                for j in eachindex(θ)
-                    res[i][j, :] = vdbθ[j]
-                end
+
+                return reduce(hcat, cons_vdbθ)
             end
-            return res
         end
     else
         cons_h = (θ) -> f.cons_h(θ, p)
     end
 
     if f.lag_h === nothing
-        lag_h = nothing # Consider implementing this
+        lag_vdθ = Tuple((Array(r) for r in eachrow(I(length(x)) * one(eltype(x)))))
+        lag_bθ = zeros(eltype(x), length(x))
+        if f.hess_prototype === nothing
+            lag_vdbθ = Tuple(zeros(eltype(x), length(x)) for i in eachindex(x))
+        else
+            lag_vdbθ = Tuple((copy(r) for r in eachrow(f.hess_prototype)))
+        end
+
+        function lag_h(θ, σ, μ)
+            Enzyme.make_zero!(lag_bθ)
+            Enzyme.make_zero!.(lag_vdbθ)
+
+            Enzyme.autodiff(Enzyme.Forward,
+                lag_grad,
+                Enzyme.BatchDuplicated(θ, lag_vdθ),
+                Enzyme.BatchDuplicatedNoNeed(lag_bθ, lag_vdbθ),
+                Const(lagrangian),
+                Const(f.f),
+                Const(f.cons),
+                Const(p),
+                Const(σ),
+                Const(μ)
+            )
+
+            k = 0
+
+            for i in eachindex(θ)
+                vec_lagv = lag_vdbθ[i]
+                res[(k + 1):(k + i), :] .= @view(vec_lagv[1:i])
+                k += i
+            end
+            return res
+        end
     else
         lag_h = (θ, σ, μ) -> f.lag_h(θ, σ, μ, p)
     end
 
     return OptimizationFunction{false}(f.f, adtype; grad = grad, hess = hess, hv = hv,
-        cons = cons_oop, cons_j = cons_j, cons_h = cons_h,
+        cons = cons, cons_j = cons_j, cons_h = cons_h,
         hess_prototype = f.hess_prototype,
         cons_jac_prototype = f.cons_jac_prototype,
         cons_hess_prototype = f.cons_hess_prototype,
