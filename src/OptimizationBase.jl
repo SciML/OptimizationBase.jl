@@ -19,6 +19,8 @@ import SciMLBase: OptimizationProblem,
                   MaxSense, MinSense, OptimizationStats
 export ObjSense, MaxSense, MinSense
 
+using FastClosures
+
 struct NullCallback end
 (x::NullCallback)(args...) = false
 const DEFAULT_CALLBACK = NullCallback()

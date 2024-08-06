@@ -72,7 +72,8 @@ function instantiate_function(f::OptimizationFunction{true}, x, ::SciMLBase.NoAD
         observed = f.observed)
 end
 
-function instantiate_function(f::OptimizationFunction{true}, cache::ReInitCache, ::SciMLBase.NoAD,
+function instantiate_function(
+        f::OptimizationFunction{true}, cache::ReInitCache, ::SciMLBase.NoAD,
         num_cons = 0)
     grad = f.grad === nothing ? nothing : (G, x, args...) -> f.grad(G, x, cache.p, args...)
     hess = f.hess === nothing ? nothing : (H, x, args...) -> f.hess(H, x, cache.p, args...)

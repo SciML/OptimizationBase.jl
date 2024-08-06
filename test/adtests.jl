@@ -26,7 +26,7 @@ H2 = Array{Float64}(undef, 2, 2)
 g!(G1, x0)
 h!(H1, x0)
 
-cons = (res, x, p) -> (res .= [x[1]^2 + x[2]^2])
+cons = (res, x, p) -> (res .= [x[1]^2 + x[2]^2]; return nothing)
 optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoModelingToolkit(), cons = cons)
 optprob = OptimizationBase.instantiate_function(optf, x0,
     OptimizationBase.AutoModelingToolkit(),
@@ -47,6 +47,7 @@ optprob.cons_h(H3, x0)
 
 function con2_c(res, x, p)
     res .= [x[1]^2 + x[2]^2, x[2] * sin(x[1]) - x[1]]
+    return nothing
 end
 optf = OptimizationFunction(rosenbrock,
     OptimizationBase.AutoModelingToolkit(),
@@ -71,46 +72,42 @@ optprob.cons_h(H3, x0)
 G2 = Array{Float64}(undef, 2)
 H2 = Array{Float64}(undef, 2, 2)
 
-if VERSION >= v"1.9"
-    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoEnzyme(), cons = cons)
-    optprob = OptimizationBase.instantiate_function(
-        optf, x0, OptimizationBase.AutoEnzyme(),
-        nothing, 1)
-    optprob.grad(G2, x0)
-    @test G1 == G2
-    optprob.hess(H2, x0)
-    @test H1 == H2
-    res = Array{Float64}(undef, 1)
-    optprob.cons(res, x0)
-    @test res == [0.0]
-    J = Array{Float64}(undef, 2)
-    optprob.cons_j(J, [5.0, 3.0])
-    @test J == [10.0, 6.0]
-    H3 = [Array{Float64}(undef, 2, 2)]
-    optprob.cons_h(H3, x0)
-    @test H3 == [[2.0 0.0; 0.0 2.0]]
-
-    G2 = Array{Float64}(undef, 2)
-    H2 = Array{Float64}(undef, 2, 2)
-
-    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoEnzyme(), cons = con2_c)
-    optprob = OptimizationBase.instantiate_function(
-        optf, x0, OptimizationBase.AutoEnzyme(),
-        nothing, 2)
-    optprob.grad(G2, x0)
-    @test G1 == G2
-    optprob.hess(H2, x0)
-    @test H1 == H2
-    res = Array{Float64}(undef, 2)
-    optprob.cons(res, x0)
-    @test res == [0.0, 0.0]
-    J = Array{Float64}(undef, 2, 2)
-    optprob.cons_j(J, [5.0, 3.0])
-    @test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
-    H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
-    optprob.cons_h(H3, x0)
-    @test H3 == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
-end
+optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoEnzyme(), cons = cons)
+optprob = OptimizationBase.instantiate_function(
+    optf, x0, OptimizationBase.AutoEnzyme(),
+    nothing, 1)
+optprob.grad(G2, x0)
+@test G1 == G2
+optprob.hess(H2, x0)
+@test H1 == H2
+res = Array{Float64}(undef, 1)
+optprob.cons(res, x0)
+@test res == [0.0]
+J = Array{Float64}(undef, 2)
+optprob.cons_j(J, [5.0, 3.0])
+@test J == [10.0, 6.0]
+H3 = [Array{Float64}(undef, 2, 2)]
+optprob.cons_h(H3, x0)
+@test H3 == [[2.0 0.0; 0.0 2.0]]
+G2 = Array{Float64}(undef, 2)
+H2 = Array{Float64}(undef, 2, 2)
+optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoEnzyme(), cons = con2_c)
+optprob = OptimizationBase.instantiate_function(
+    optf, x0, OptimizationBase.AutoEnzyme(),
+    nothing, 2)
+optprob.grad(G2, x0)
+@test G1 == G2
+optprob.hess(H2, x0)
+@test H1 == H2
+res = Array{Float64}(undef, 2)
+optprob.cons(res, x0)
+@test res == [0.0, 0.0]
+J = Array{Float64}(undef, 2, 2)
+optprob.cons_j(J, [5.0, 3.0])
+@test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
+H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
+optprob.cons_h(H3, x0)
+@test H3 == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
 
 G2 = Array{Float64}(undef, 2)
 H2 = Array{Float64}(undef, 2, 2)
