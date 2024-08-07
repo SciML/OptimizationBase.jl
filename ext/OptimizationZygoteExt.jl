@@ -1,10 +1,10 @@
 module OptimizationZygoteExt
 
-using OptimizationBase
+using OptimizationBase, SparseArrays
 using OptimizationBase.FastClosures
 import OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase: OptimizationFunction
-import OptimizationBase.LinearAlgebra: I
+import OptimizationBase.LinearAlgebra: I, dot
 import DifferentiationInterface
 import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp,
                                  prepare_jacobian,
@@ -187,16 +187,16 @@ function OptimizationBase.instantiate_function(
     return OptimizationBase.instantiate_function(f, x, adtype, p, num_cons)
 end
 
-function instantiate_function(
+function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, x, adtype::ADTypes.AutoSparse{<:AutoZygote},
         p = SciMLBase.NullParameters(), num_cons = 0;
-        fg = false, fgh = false,
+        fg = false, fgh = false, conshess = false,
         cons_vjp = false, cons_jvp = false)
     function _f(θ)
-        return f(θ, p)[1]
+        return f.f(θ, p)[1]
     end
 
-    adtype, soadtype = generate_sparse_adtype(adtype)
+    adtype, soadtype = OptimizationBase.generate_sparse_adtype(adtype)
 
     if f.grad === nothing
         extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
@@ -252,7 +252,7 @@ function instantiate_function(
 
         function cons_oop(x)
             _res = Zygote.Buffer(x, num_cons)
-            cons(_res, x)
+            f.cons(_res, x, p)
             return copy(_res)
         end
 
@@ -297,7 +297,7 @@ function instantiate_function(
 
     conshess_sparsity = f.cons_hess_prototype
     conshess_colors = f.cons_hess_colorvec
-    if cons !== nothing && f.cons_h === nothing
+    if cons !== nothing && f.cons_h === nothing && conshess == true
         fncs = [@closure (x) -> cons_oop(x)[i] for i in 1:num_cons]
         extras_cons_hess = Vector(undef, length(fncs))
         for ind in 1:num_cons
@@ -330,7 +330,7 @@ function instantiate_function(
 
         function lag_h(h, θ, σ, λ)
             H = eltype(θ).(lag_hess_prototype)
-            hessian!(x -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
+            hessian!((x) -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
             k = 0
             rows, cols, _ = findnz(H)
             for (i, j) in zip(rows, cols)
@@ -358,13 +358,13 @@ function instantiate_function(
         cons_expr = f.cons_expr)
 end
 
-function instantiate_function(
+function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
         adtype::ADTypes.AutoSparse{<:AutoZygote}, num_cons = 0)
     x = cache.u0
     p = cache.p
 
-    return instantiate_function(f, x, adtype, p, num_cons)
+    return OptimizationBase.instantiate_function(f, x, adtype, p, num_cons)
 end
 
 end

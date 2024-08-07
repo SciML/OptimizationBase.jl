@@ -103,14 +103,15 @@ end
 function instantiate_function(
         f::OptimizationFunction{true}, x, adtype::ADTypes.AutoSparse{<:AbstractADType},
         p = SciMLBase.NullParameters(), num_cons = 0;
-        fg = false, fgh = false,
+        objhess = false,
+        fg = false, fgh = false, conshess = false,
         cons_vjp = false, cons_jvp = false)
     function _f(θ)
-        return f(θ, p)[1]
+        return f.f(θ, p)[1]
     end
 
     adtype, soadtype = generate_sparse_adtype(adtype)
-
+    @show adtype
     if f.grad === nothing
         extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
         function grad(res, θ)
@@ -129,7 +130,7 @@ function instantiate_function(
 
     hess_sparsity = f.hess_prototype
     hess_colors = f.hess_colorvec
-    if f.hess === nothing
+    if f.hess === nothing && objhess == true
         extras_hess = prepare_hessian(_f, soadtype, x) #placeholder logic, can be made much better
         function hess(res, θ)
             hessian!(_f, res, soadtype, θ, extras_hess)
@@ -163,9 +164,9 @@ function instantiate_function(
             f.cons(res, θ, p)
         end
 
-        function cons_oop(x)
+        function cons_oop(x, p=p)
             _res = zeros(eltype(x), num_cons)
-            cons(_res, x)
+            f.cons(_res, x, p)
             return _res
         end
 
@@ -210,7 +211,7 @@ function instantiate_function(
 
     conshess_sparsity = f.cons_hess_prototype
     conshess_colors = f.cons_hess_colorvec
-    if cons !== nothing && f.cons_h === nothing
+    if cons !== nothing && f.cons_h === nothing && conshess == true
         fncs = [@closure (x) -> cons_oop(x)[i] for i in 1:num_cons]
         extras_cons_hess = Vector(undef, length(fncs))
         for ind in 1:num_cons

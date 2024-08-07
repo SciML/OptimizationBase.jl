@@ -23,7 +23,8 @@ end
 function instantiate_function(
         f::OptimizationFunction{true}, x, adtype::ADTypes.AbstractADType,
         p = SciMLBase.NullParameters(), num_cons = 0;
-        fg = false, fgh = false, cons_vjp = false, cons_jvp = false)
+        fg = false, fgh = false, conshess = false,
+        cons_vjp = false, cons_jvp = false)
     function _f(θ)
         return f(θ, p)[1]
     end
@@ -125,7 +126,7 @@ function instantiate_function(
 
     conshess_sparsity = f.cons_hess_prototype
     conshess_colors = f.cons_hess_colorvec
-    if cons !== nothing && f.cons_h === nothing
+    if cons !== nothing && f.cons_h === nothing && conshess == true
         fncs = [(x) -> cons_oop(x)[i] for i in 1:num_cons]
         extras_cons_hess = prepare_hessian.(fncs, Ref(soadtype), Ref(x))
 
