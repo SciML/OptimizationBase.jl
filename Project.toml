@@ -1,7 +1,7 @@
 name = "OptimizationBase"
 uuid = "bca83a33-5cc9-4baa-983d-23429ab6bcbb"
 authors = ["Vaibhav Dixit <vaibhavyashdixit@gmail.com> and contributors"]
-version = "1.4.0"
+version = "1.4.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -52,7 +52,7 @@ Requires = "1"
 ReverseDiff = "1.14"
 SciMLBase = "2"
 SparseDiffTools = "2.14"
-SymbolicAnalysis = "0.1, 0.2"
+SymbolicAnalysis = "0.3"
 SymbolicIndexingInterface = "0.3"
 Symbolics = "5.12, 6"
 Tracker = "0.2.29"
