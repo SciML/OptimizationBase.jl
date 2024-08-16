@@ -8,7 +8,10 @@ using ModelingToolkit
 
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, x, adtype::AutoSparse{<:AutoSymbolics}, p,
-        num_cons = 0)
+        num_cons = 0;
+        g = false, h = false, hv = false, fg = false, fgh = false,
+        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
+        lag_h = false)
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, x, p;
@@ -17,8 +20,8 @@ function OptimizationBase.instantiate_function(
         ucons = fill(0.0,
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
-    f = OptimizationProblem(sys, x, p, grad = true, hess = true,
-        sparse = true, cons_j = true, cons_h = true,
+    f = OptimizationProblem(sys, x, p, grad = g, hess = h,
+        sparse = true, cons_j = cons_j, cons_h = cons_h,
         cons_sparse = true).f
 
     grad = (G, θ, args...) -> f.grad(G, θ, p, args...)
@@ -54,7 +57,10 @@ end
 
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
-        adtype::AutoSparse{<:AutoSymbolics}, num_cons = 0)
+        adtype::AutoSparse{<:AutoSymbolics}, num_cons = 0,
+        g = false, h = false, hv = false, fg = false, fgh = false,
+        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
+        lag_h = false)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, cache.u0,
@@ -64,8 +70,8 @@ function OptimizationBase.instantiate_function(
         ucons = fill(0.0,
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
-    f = OptimizationProblem(sys, cache.u0, cache.p, grad = true, hess = true,
-        sparse = true, cons_j = true, cons_h = true,
+    f = OptimizationProblem(sys, cache.u0, cache.p, grad = g, hess = h,
+        sparse = true, cons_j = cons_j, cons_h = cons_h,
         cons_sparse = true).f
 
     grad = (G, θ, args...) -> f.grad(G, θ, cache.p, args...)
@@ -101,7 +107,9 @@ end
 
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, x, adtype::AutoSymbolics, p,
-        num_cons = 0)
+        num_cons = 0, g = false, h = false, hv = false, fg = false, fgh = false,
+        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
+        lag_h = false)
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, x, p;
@@ -110,8 +118,8 @@ function OptimizationBase.instantiate_function(
         ucons = fill(0.0,
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
-    f = OptimizationProblem(sys, x, p, grad = true, hess = true,
-        sparse = false, cons_j = true, cons_h = true,
+    f = OptimizationProblem(sys, x, p, grad = g, hess = h,
+        sparse = false, cons_j = cons_j, cons_h = cons_h,
         cons_sparse = false).f
 
     grad = (G, θ, args...) -> f.grad(G, θ, p, args...)
@@ -147,7 +155,10 @@ end
 
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
-        adtype::AutoSymbolics, num_cons = 0)
+        adtype::AutoSymbolics, num_cons = 0,
+        g = false, h = false, hv = false, fg = false, fgh = false,
+        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
+        lag_h = false)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, cache.u0,
@@ -157,8 +168,8 @@ function OptimizationBase.instantiate_function(
         ucons = fill(0.0,
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
-    f = OptimizationProblem(sys, cache.u0, cache.p, grad = true, hess = true,
-        sparse = false, cons_j = true, cons_h = true,
+    f = OptimizationProblem(sys, cache.u0, cache.p, grad = g, hess = h,
+        sparse = false, cons_j = cons_j, cons_h = cons_h, 
         cons_sparse = false).f
 
     grad = (G, θ, args...) -> f.grad(G, θ, cache.p, args...)
