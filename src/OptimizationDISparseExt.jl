@@ -166,9 +166,9 @@ function instantiate_function(
             hvp!(_f, H, soadtype.dense_ad, θ, v, extras_hvp)
         end
     elseif hv == true
-        hv = (H, θ, v) -> f.hv(H, θ, v, p)
+        hv! = (H, θ, v) -> f.hv(H, θ, v, p)
     else
-        hv = nothing
+        hv! = nothing
     end
 
     if f.cons === nothing
@@ -178,7 +178,7 @@ function instantiate_function(
             f.cons(res, θ, p)
         end
 
-        function cons_oop(x, p=p)
+        function cons_oop(x, p = p)
             _res = zeros(eltype(x), num_cons)
             f.cons(_res, x, p)
             return _res
@@ -231,7 +231,7 @@ function instantiate_function(
 
     conshess_sparsity = f.cons_hess_prototype
     conshess_colors = f.cons_hess_colorvec
-    if cons !== nothing && f.cons_h === nothing && conshess == true
+    if cons !== nothing && f.cons_h === nothing && cons_h == true
         fncs = [@closure (x) -> cons_oop(x)[i] for i in 1:num_cons]
         extras_cons_hess = Vector(undef, length(fncs))
         for ind in 1:num_cons
@@ -380,7 +380,7 @@ function instantiate_function(
     elseif hv == true
         hv! = (θ, v) -> f.hv(θ, v, p)
     else
-        hv = f.hv
+        hv! = nothing
     end
 
     if f.cons === nothing
@@ -409,9 +409,31 @@ function instantiate_function(
         cons_jac_prototype = extras_jac.sparsity
         cons_jac_colorvec = extras_jac.colors
     elseif cons_j === true && cons !== nothing
-        cons_j = (θ) -> f.cons_j(θ, p)
+        cons_j! = (θ) -> f.cons_j(θ, p)
     else
-        cons_j = nothing
+        cons_j! = nothing
+    end
+
+    if f.cons_vjp === nothing && cons_vjp == true
+        extras_pullback = prepare_pullback(cons, adtype, x)
+        function cons_vjp!(θ, v)
+            pullback(cons, adtype, θ, v, extras_pullback)
+        end
+    elseif cons_vjp === true && cons !== nothing
+        cons_vjp! = (θ, v) -> f.cons_vjp(θ, v, p)
+    else
+        cons_vjp! = nothing
+    end
+
+    if f.cons_jvp === nothing && cons_jvp == true
+        extras_pushforward = prepare_pushforward(cons, adtype, x)
+        function cons_jvp!(θ, v)
+            pushforward(cons, adtype, θ, v, extras_pushforward)
+        end
+    elseif cons_jvp === true && cons !== nothing
+        cons_jvp! = (θ, v) -> f.cons_jvp(θ, v, p)
+    else
+        cons_jvp! = nothing
     end
 
     conshess_sparsity = f.cons_hess_prototype

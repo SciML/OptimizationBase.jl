@@ -44,7 +44,7 @@ For more information on the use of automatic differentiation, see the
 documentation of the `AbstractADType` types.
 """
 function instantiate_function(f::OptimizationFunction{true}, x, ::SciMLBase.NoAD,
-        p, num_cons = 0)
+        p, num_cons = 0, kwargs...)
     grad = f.grad === nothing ? nothing : (G, x, args...) -> f.grad(G, x, p, args...)
     hess = f.hess === nothing ? nothing : (H, x, args...) -> f.hess(H, x, p, args...)
     hv = f.hv === nothing ? nothing : (H, x, v, args...) -> f.hv(H, x, v, p, args...)
@@ -74,7 +74,7 @@ end
 
 function instantiate_function(
         f::OptimizationFunction{true}, cache::ReInitCache, ::SciMLBase.NoAD,
-        num_cons = 0)
+        num_cons = 0, kwargs...)
     grad = f.grad === nothing ? nothing : (G, x, args...) -> f.grad(G, x, cache.p, args...)
     hess = f.hess === nothing ? nothing : (H, x, args...) -> f.hess(H, x, cache.p, args...)
     hv = f.hv === nothing ? nothing : (H, x, v, args...) -> f.hv(H, x, v, cache.p, args...)
@@ -103,7 +103,7 @@ function instantiate_function(
 end
 
 function instantiate_function(f::OptimizationFunction, x, adtype::ADTypes.AbstractADType,
-        p, num_cons = 0)
+        p, num_cons = 0, kwargs...)
     adtypestr = string(adtype)
     _strtind = findfirst('.', adtypestr)
     strtind = isnothing(_strtind) ? 5 : _strtind + 5

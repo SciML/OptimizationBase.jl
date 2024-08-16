@@ -93,7 +93,6 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
         lag_h = false)
-
     if g == true && f.grad === nothing
         function grad(res, θ)
             Enzyme.make_zero!(res)
@@ -351,7 +350,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
                 k += i
             end
         end
-    elseif lag_h == true && cons !== nothing 
+    elseif lag_h == true && cons !== nothing
         lag_h! = (θ, σ, μ) -> f.lag_h(θ, σ, μ, p)
     else
         lag_h! = nothing
@@ -384,11 +383,10 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
 end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x,
-        adtype::AutoEnzyme, p, num_cons = 0; 
+        adtype::AutoEnzyme, p, num_cons = 0;
         g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
         lag_h = false)
-
     if g == true && f.grad === nothing
         res = zeros(eltype(x), size(x))
         function grad(θ)
@@ -637,10 +635,10 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         lag_h! = nothing
     end
 
-    return OptimizationFunction{false}(f.f, adtype; grad = grad, 
+    return OptimizationFunction{false}(f.f, adtype; grad = grad,
         fg = fg!, fgh = fgh!,
         hess = hess, hv = hv!,
-        cons = cons, cons_j = cons_j!, 
+        cons = cons, cons_j = cons_j!,
         cons_jvp = cons_jvp!, cons_vjp = cons_vjp!,
         cons_h = cons_h!,
         hess_prototype = f.hess_prototype,

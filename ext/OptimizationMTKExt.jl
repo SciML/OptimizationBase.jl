@@ -169,7 +169,7 @@ function OptimizationBase.instantiate_function(
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
     f = OptimizationProblem(sys, cache.u0, cache.p, grad = g, hess = h,
-        sparse = false, cons_j = cons_j, cons_h = cons_h, 
+        sparse = false, cons_j = cons_j, cons_h = cons_h,
         cons_sparse = false).f
 
     grad = (G, θ, args...) -> f.grad(G, θ, cache.p, args...)

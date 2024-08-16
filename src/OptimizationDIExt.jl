@@ -69,7 +69,8 @@ function instantiate_function(
 
     if fgh == true && f.fgh !== nothing
         function fgh!(G, H, θ)
-            (y, _, _) = value_derivative_and_second_derivative!(_f, G, H, soadtype, θ, extras_hess)
+            (y, _, _) = value_derivative_and_second_derivative!(
+                _f, G, H, soadtype, θ, extras_hess)
             return y
         end
     elseif fgh == true
@@ -84,9 +85,9 @@ function instantiate_function(
             hvp!(_f, H, soadtype, θ, v, extras_hvp)
         end
     elseif hv == true
-        hv = (H, θ, v) -> f.hv(H, θ, v, p)
+        hv! = (H, θ, v) -> f.hv(H, θ, v, p)
     else
-        hv = nothing
+        hv! = nothing
     end
 
     if f.cons === nothing
@@ -189,7 +190,7 @@ function instantiate_function(
                 end
             end
         end
-    elseif lag_h == true && cons !== nothing 
+    elseif lag_h == true && cons !== nothing
         lag_h! = (res, θ, σ, μ) -> f.lag_h(res, θ, σ, μ, p)
     else
         lag_h! = nothing
