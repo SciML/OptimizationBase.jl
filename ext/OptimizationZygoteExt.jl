@@ -256,8 +256,8 @@ function OptimizationBase.instantiate_function(
         function hess(res, θ)
             hessian!(_f, res, soadtype, θ, extras_hess)
         end
-        hess_sparsity = extras_hess.sparsity
-        hess_colors = extras_hess.colors
+        hess_sparsity = extras_hess.coloring_result.S
+        hess_colors = extras_hess.coloring_result.color
     elseif h == true
         hess = (H, θ) -> f.hess(H, θ, p)
     else
@@ -314,8 +314,8 @@ function OptimizationBase.instantiate_function(
                 J = vec(J)
             end
         end
-        cons_jac_prototype = extras_jac.sparsity
-        cons_jac_colorvec = extras_jac.colors
+        cons_jac_prototype = extras_jac.coloring_result.S
+        cons_jac_colorvec = extras_jac.coloring_result.color
     elseif cons !== nothing && cons_j == true
         cons_j! = (J, θ) -> f.cons_j(J, θ, p)
     else
@@ -352,8 +352,9 @@ function OptimizationBase.instantiate_function(
         for ind in 1:num_cons
             extras_cons_hess[ind] = prepare_hessian(fncs[ind], soadtype, x)
         end
-        conshess_sparsity = getfield.(extras_cons_hess, :sparsity)
-        conshess_colors = getfield.(extras_cons_hess, :colors)
+        colores = getfield.(extras_cons_hess, :coloring_result)
+        conshess_sparsity = getfield.(colores, :S)
+        conshess_colors = getfield.(colores, :color)
         function cons_h!(H, θ)
             for i in 1:num_cons
                 hessian!(fncs[i], H[i], soadtype, θ, extras_cons_hess[i])
@@ -368,7 +369,8 @@ function OptimizationBase.instantiate_function(
     lag_hess_prototype = f.lag_hess_prototype
     if cons !== nothing && cons_h == true && f.lag_h === nothing
         lag_extras = prepare_hessian(lagrangian, soadtype, x)
-        lag_hess_prototype = lag_extras.sparsity
+        lag_hess_prototype = lag_extras.coloring_result.S
+        lag_hess_colors = lag_extras.coloring_result.color
 
         function lag_h!(H::AbstractMatrix, θ, σ, λ)
             if σ == zero(eltype(θ))
@@ -406,6 +408,7 @@ function OptimizationBase.instantiate_function(
         cons_hess_colorvec = conshess_colors,
         lag_h = lag_h!,
         lag_hess_prototype = lag_hess_prototype,
+        lag_hess_colorvec = lag_hess_colors,
         sys = f.sys,
         expr = f.expr,
         cons_expr = f.cons_expr)
