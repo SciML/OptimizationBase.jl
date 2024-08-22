@@ -7,7 +7,8 @@ import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.LinearAlgebra: I, dot
 import DifferentiationInterface
 import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp,
-                                 prepare_jacobian, value_and_gradient!, value_derivative_and_second_derivative!,
+                                 prepare_jacobian, value_and_gradient!,
+                                 value_derivative_and_second_derivative!,
                                  gradient!, hessian!, hvp!, jacobian!, gradient, hessian,
                                  hvp, jacobian
 using ADTypes, SciMLBase
@@ -211,7 +212,7 @@ function OptimizationBase.instantiate_function(
         lag_h! = nothing
     end
 
-    return OptimizationFunction{true}(f.f, adtype; 
+    return OptimizationFunction{true}(f.f, adtype;
         grad = grad, fg = fg!, hess = hess, hv = hv!, fgh = fgh!,
         cons = cons, cons_j = cons_j!, cons_h = cons_h!,
         cons_vjp = cons_vjp!, cons_jvp = cons_jvp!,
@@ -444,7 +445,7 @@ function OptimizationBase.instantiate_function(
     else
         lag_h! = nothing
     end
-    return OptimizationFunction{true}(f.f, adtype; 
+    return OptimizationFunction{true}(f.f, adtype;
         grad = grad, fg = fg!, hess = hess, hv = hv!, fgh = fgh!,
         cons = cons, cons_j = cons_j!, cons_h = cons_h!,
         hess_prototype = hess_sparsity,
