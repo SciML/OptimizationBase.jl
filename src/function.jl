@@ -105,64 +105,49 @@ function instantiate_function(f::MultiObjectiveOptimizationFunction, cache::ReIn
         observed = f.observed)
 end
 
-
 function instantiate_function(f::OptimizationFunction{true}, x, ::SciMLBase.NoAD,
-        p, num_cons = 0)
-    grad = f.grad === nothing ? nothing : (G, x, args...) -> f.grad(G, x, p, args...)
-    hess = f.hess === nothing ? nothing : (H, x, args...) -> f.hess(H, x, p, args...)
-    hv = f.hv === nothing ? nothing : (H, x, v, args...) -> f.hv(H, x, v, p, args...)
-    cons = f.cons === nothing ? nothing : (res, x) -> f.cons(res, x, p)
-    cons_j = f.cons_j === nothing ? nothing : (res, x) -> f.cons_j(res, x, p)
-    cons_h = f.cons_h === nothing ? nothing : (res, x) -> f.cons_h(res, x, p)
-    hess_prototype = f.hess_prototype === nothing ? nothing :
-                     convert.(eltype(x), f.hess_prototype)
-    cons_jac_prototype = f.cons_jac_prototype === nothing ? nothing :
-                         convert.(eltype(x), f.cons_jac_prototype)
-    cons_hess_prototype = f.cons_hess_prototype === nothing ? nothing :
-                          [convert.(eltype(x), f.cons_hess_prototype[i])
-                           for i in 1:num_cons]
-    expr = symbolify(f.expr)
-    cons_expr = symbolify.(f.cons_expr)
+        p, num_cons = 0, kwargs...)
+        grad = f.grad === nothing ? nothing : (G, x, args...) -> f.grad(G, x, p, args...)
+        fg = f.fg === nothing ? nothing : (G, x, args...) -> f.fg(G, x, p, args...)
+        hess = f.hess === nothing ? nothing : (H, x, args...) -> f.hess(H, x, p, args...)
+        fgh = f.fgh === nothing ? nothing : (G, H, x, args...) -> f.fgh(G, H, x, p, args...)
+        hv = f.hv === nothing ? nothing : (H, x, v, args...) -> f.hv(H, x, v, p, args...)
+        cons = f.cons === nothing ? nothing : (res, x) -> f.cons(res, x, p)
+        cons_j = f.cons_j === nothing ? nothing : (res, x) -> f.cons_j(res, x, p)
+        cons_vjp = f.cons_vjp === nothing ? nothing : (res, x) -> f.cons_vjp(res, x, p)
+        cons_jvp = f.cons_jvp === nothing ? nothing : (res, x) -> f.cons_jvp(res, x, p)
+        cons_h = f.cons_h === nothing ? nothing : (res, x) -> f.cons_h(res, x, p)
+        lag_h = f.lag_h === nothing ? nothing : (res, x) -> f.lag_h(res, x, p)
+        hess_prototype = f.hess_prototype === nothing ? nothing :
+                         convert.(eltype(x), f.hess_prototype)
+        cons_jac_prototype = f.cons_jac_prototype === nothing ? nothing :
+                             convert.(eltype(x), f.cons_jac_prototype)
+        cons_hess_prototype = f.cons_hess_prototype === nothing ? nothing :
+                              [convert.(eltype(x), f.cons_hess_prototype[i])
+                               for i in 1:num_cons]
+        expr = symbolify(f.expr)
+        cons_expr = symbolify.(f.cons_expr)
 
-    return OptimizationFunction{true}(f.f, SciMLBase.NoAD(); grad = grad, hess = hess,
-        hv = hv,
-        cons = cons, cons_j = cons_j, cons_h = cons_h,
-        hess_prototype = hess_prototype,
-        cons_jac_prototype = cons_jac_prototype,
-        cons_hess_prototype = cons_hess_prototype,
-        expr = expr, cons_expr = cons_expr,
-        sys = f.sys,
-        observed = f.observed)
+        return OptimizationFunction{true}(f.f, SciMLBase.NoAD(); 
+            grad = grad, fg = fg, hess = hess, fgh = fgh, hv = hv,
+            cons = cons, cons_j = cons_j, cons_h = cons_h,
+            cons_vjp = cons_vjp, cons_jvp = cons_jvp,
+            lag_h = lag_h,
+            hess_prototype = hess_prototype,
+            cons_jac_prototype = cons_jac_prototype,
+            cons_hess_prototype = cons_hess_prototype,
+            expr = expr, cons_expr = cons_expr,
+            sys = f.sys,
+            observed = f.observed)
 end
 
 function instantiate_function(
         f::OptimizationFunction{true}, cache::ReInitCache, ::SciMLBase.NoAD,
         num_cons = 0, kwargs...)
-    grad = f.grad === nothing ? nothing : (G, x, args...) -> f.grad(G, x, cache.p, args...)
-    hess = f.hess === nothing ? nothing : (H, x, args...) -> f.hess(H, x, cache.p, args...)
-    hv = f.hv === nothing ? nothing : (H, x, v, args...) -> f.hv(H, x, v, cache.p, args...)
-    cons = f.cons === nothing ? nothing : (res, x) -> f.cons(res, x, cache.p)
-    cons_j = f.cons_j === nothing ? nothing : (res, x) -> f.cons_j(res, x, cache.p)
-    cons_h = f.cons_h === nothing ? nothing : (res, x) -> f.cons_h(res, x, cache.p)
-    hess_prototype = f.hess_prototype === nothing ? nothing :
-                     convert.(eltype(cache.u0), f.hess_prototype)
-    cons_jac_prototype = f.cons_jac_prototype === nothing ? nothing :
-                         convert.(eltype(cache.u0), f.cons_jac_prototype)
-    cons_hess_prototype = f.cons_hess_prototype === nothing ? nothing :
-                          [convert.(eltype(cache.u0), f.cons_hess_prototype[i])
-                           for i in 1:num_cons]
-    expr = symbolify(f.expr)
-    cons_expr = symbolify.(f.cons_expr)
+    x = cache.u0
+    p = cache.p
 
-    return OptimizationFunction{true}(f.f, SciMLBase.NoAD(); grad = grad, hess = hess,
-        hv = hv,
-        cons = cons, cons_j = cons_j, cons_h = cons_h,
-        hess_prototype = hess_prototype,
-        cons_jac_prototype = cons_jac_prototype,
-        cons_hess_prototype = cons_hess_prototype,
-        expr = expr, cons_expr = cons_expr,
-        sys = f.sys,
-        observed = f.observed)
+    return instantiate_function(f, x, SciMLBase.NoAD(), p, num_cons, kwargs...)
 end
 
 function instantiate_function(f::OptimizationFunction, x, adtype::ADTypes.AbstractADType,
