@@ -797,3 +797,77 @@ optprob.hess(H2, x0)
     @test optprob.cons_j([5.0, 3.0])≈[10.0 6.0; -0.149013 -0.958924] rtol=1e-6
     @test Array.(optprob.cons_h(x0)) ≈ [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
 end
+
+using MLUtils
+
+@testset "Stochastic gradient" begin
+    x = rand(10000)
+    y = sin.(x)
+    data = MLUtils.DataLoader((x,y), batchsize = 100)
+
+    function loss(coeffs, data)
+        ypred = [evalpoly(data[1][i], coeffs) for i in eachindex(data[1])] 
+        return sum(abs2, ypred .- data[2])
+    end
+
+    optf = OptimizationFunction(loss, AutoForwardDiff())
+    optf = OptimizationBase.instantiate_function(optf, rand(3), AutoForwardDiff(), iterate(data)[1], g = true, fg = true)
+    G0 = zeros(3)
+    optf.grad(G0, ones(3))
+    stochgrads = []
+    for (x,y) in data
+        G = zeros(3)
+        optf.grad(G, ones(3), (x,y))
+        push!(stochgrads, copy(G))
+        G1 = zeros(3)
+        optf.fg(G1, ones(3), (x,y))
+        @test G ≈ G1 rtol=1e-6
+    end
+    @test G0 ≈ sum(stochgrads)/length(stochgrads) rtol=1e-1
+
+    optf = OptimizationFunction(loss, AutoReverseDiff())
+    optf = OptimizationBase.instantiate_function(optf, rand(3), AutoReverseDiff(), iterate(data)[1], g = true, fg = true)
+    G0 = zeros(3)
+    optf.grad(G0, ones(3))
+    stochgrads = []
+    for (x,y) in data
+        G = zeros(3)
+        optf.grad(G, ones(3), (x,y))
+        push!(stochgrads, copy(G))
+        G1 = zeros(3)
+        optf.fg(G1, ones(3), (x,y))
+        @test G ≈ G1 rtol=1e-6
+    end
+    @test G0 ≈ sum(stochgrads)/length(stochgrads) rtol=1e-1
+
+    optf = OptimizationFunction(loss, AutoZygote())
+    optf = OptimizationBase.instantiate_function(optf, rand(3), AutoZygote(), iterate(data)[1], g = true, fg = true)
+    G0 = zeros(3)
+    optf.grad(G0, ones(3))
+    stochgrads = []
+    for (x,y) in data
+        G = zeros(3)
+        optf.grad(G, ones(3), (x,y))
+        push!(stochgrads, copy(G))
+        G1 = zeros(3)
+        optf.fg(G1, ones(3), (x,y))
+        @test G ≈ G1 rtol=1e-6
+    end
+    @test G0 ≈ sum(stochgrads)/length(stochgrads) rtol=1e-1
+
+    
+    optf = OptimizationFunction(loss, AutoEnzyme())
+    optf = OptimizationBase.instantiate_function(optf, rand(3), AutoEnzyme(), iterate(data)[1], g = true, fg = true)
+    G0 = zeros(3)
+    @test_broken optf.grad(G0, ones(3))
+    stochgrads = []
+    # for (x,y) in data
+    #     G = zeros(3)
+    #     optf.grad(G, ones(3), (x,y))
+    #     push!(stochgrads, copy(G))
+    #     G1 = zeros(3)
+    #     optf.fg(G1, ones(3), (x,y))
+    #     @test G ≈ G1 rtol=1e-6
+    # end
+    # @test G0 ≈ sum(stochgrads)/length(stochgrads) rtol=1e-1
+end

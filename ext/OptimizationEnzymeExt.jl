@@ -94,7 +94,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
         lag_h = false)
     if g == true && f.grad === nothing
-        function grad(res, θ)
+        function grad(res, θ, p = p)
             Enzyme.make_zero!(res)
             Enzyme.autodiff(Enzyme.Reverse,
                 Const(firstapply),
@@ -111,7 +111,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     end
 
     if fg == true && f.fg === nothing
-        function fg!(res, θ)
+        function fg!(res, θ, p = p)
             Enzyme.make_zero!(res)
             y = Enzyme.autodiff(Enzyme.ReverseWithPrimal,
                 Const(firstapply),

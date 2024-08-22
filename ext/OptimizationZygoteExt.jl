@@ -7,7 +7,7 @@ import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.LinearAlgebra: I, dot
 import DifferentiationInterface
 import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp,
-                                 prepare_jacobian,
+                                 prepare_jacobian, value_and_gradient!, value_derivative_and_second_derivative!,
                                  gradient!, hessian!, hvp!, jacobian!, gradient, hessian,
                                  hvp, jacobian
 using ADTypes, SciMLBase
@@ -19,8 +19,9 @@ function OptimizationBase.instantiate_function(
         g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
         lag_h = false)
+    global _p = p
     function _f(θ)
-        return f(θ, p)[1]
+        return f(θ, _p)[1]
     end
 
     adtype, soadtype = OptimizationBase.generate_adtype(adtype)
@@ -30,19 +31,41 @@ function OptimizationBase.instantiate_function(
         function grad(res, θ)
             gradient!(_f, res, adtype, θ, extras_grad)
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function grad(res, θ, p)
+                global _p = p
+                gradient!(_f, res, adtype, θ)
+            end
+        end
     elseif g == true
         grad = (G, θ) -> f.grad(G, θ, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            grad = (G, θ, p) -> f.grad(G, θ, p)
+        end
     else
         grad = nothing
     end
 
     if fg == true && f.fg === nothing
+        if g == false
+            extras_grad = prepare_gradient(_f, adtype, x)
+        end
         function fg!(res, θ)
             (y, _) = value_and_gradient!(_f, res, adtype, θ, extras_grad)
             return y
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function fg!(res, θ, p)
+                global _p = p
+                (y, _) = value_and_gradient!(_f, res, adtype, θ)
+                return y
+            end
+        end
     elseif fg == true
         fg! = (G, θ) -> f.fg(G, θ, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            fg! = (G, θ, p) -> f.fg(G, θ, p)
+        end
     else
         fg! = nothing
     end
@@ -188,7 +211,8 @@ function OptimizationBase.instantiate_function(
         lag_h! = nothing
     end
 
-    return OptimizationFunction{true}(f.f, adtype; grad = grad, hess = hess, hv = hv!,
+    return OptimizationFunction{true}(f.f, adtype; 
+        grad = grad, fg = fg!, hess = hess, hv = hv!, fgh = fgh!,
         cons = cons, cons_j = cons_j!, cons_h = cons_h!,
         cons_vjp = cons_vjp!, cons_jvp = cons_jvp!,
         hess_prototype = hess_sparsity,
@@ -232,19 +256,41 @@ function OptimizationBase.instantiate_function(
         function grad(res, θ)
             gradient!(_f, res, adtype.dense_ad, θ, extras_grad)
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function grad(res, θ, p)
+                global p = p
+                gradient!(_f, res, adtype.dense_ad, θ)
+            end
+        end
     elseif g == true
         grad = (G, θ) -> f.grad(G, θ, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            grad = (G, θ, p) -> f.grad(G, θ, p)
+        end
     else
         grad = nothing
     end
 
     if fg == true && f.fg !== nothing
+        if g == false
+            extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
+        end
         function fg!(res, θ)
             (y, _) = value_and_gradient!(_f, res, adtype.dense_ad, θ, extras_grad)
             return y
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function fg!(res, θ, p)
+                global p = p
+                (y, _) = value_and_gradient!(_f, res, adtype.dense_ad, θ)
+                return y
+            end
+        end
     elseif fg == true
         fg! = (G, θ) -> f.fg(G, θ, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            fg! = (G, θ, p) -> f.fg(G, θ, p)
+        end
     else
         fg! = nothing
     end
@@ -398,7 +444,8 @@ function OptimizationBase.instantiate_function(
     else
         lag_h! = nothing
     end
-    return OptimizationFunction{true}(f.f, adtype; grad = grad, hess = hess, hv = hv!,
+    return OptimizationFunction{true}(f.f, adtype; 
+        grad = grad, fg = fg!, hess = hess, hv = hv!, fgh = fgh!,
         cons = cons, cons_j = cons_j!, cons_h = cons_h!,
         hess_prototype = hess_sparsity,
         hess_colorvec = hess_colors,
