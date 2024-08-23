@@ -35,10 +35,11 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
         kwargs...)
     reinit_cache = OptimizationBase.ReInitCache(prob.u0, prob.p)
     num_cons = prob.ucons === nothing ? 0 : length(prob.ucons)
-    f = OptimizationBase.instantiate_function(prob.f, reinit_cache, prob.f.adtype, num_cons,
-    g = SciMLBase.requiresgradient(opt), h = SciMLBase.requireshessian(opt), fg = SciMLBase.allowsfg(opt),
-    fgh = SciMLBase.allowsfgh(opt), cons_j = SciMLBase.requiresconsjac(opt), cons_h = SciMLBase.requiresconshess(opt),
-    cons_vjp = SciMLBase.allowsconsjvp(opt), cons_jvp = SciMLBase.allowsconsjvp(opt), lag_h = SciMLBase.requireslagh(opt))
+    f = OptimizationBase.instantiate_function(
+        prob.f, reinit_cache, prob.f.adtype, num_cons,
+        g = SciMLBase.requiresgradient(opt), h = SciMLBase.requireshessian(opt), fg = SciMLBase.allowsfg(opt),
+        fgh = SciMLBase.allowsfgh(opt), cons_j = SciMLBase.requiresconsjac(opt), cons_h = SciMLBase.requiresconshess(opt),
+        cons_vjp = SciMLBase.allowsconsjvp(opt), cons_jvp = SciMLBase.allowsconsjvp(opt), lag_h = SciMLBase.requireslagh(opt))
 
     if (f.sys === nothing ||
         f.sys isa SymbolicIndexingInterface.SymbolCache{Nothing, Nothing, Nothing}) &&
