@@ -17,7 +17,7 @@ jobs:
         julia-version: [1]
         os: [ubuntu-latest]
         package:
-          - {user: SciML, repo: Optimization.jl, group: Optimization}
+          - {user: SciML, repo: Optimization.jl, group: All}
 
     steps:
       - uses: actions/checkout@v4

@@ -4,11 +4,14 @@ import OptimizationBase, OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase
 import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.ADTypes: AutoModelingToolkit, AutoSymbolics, AutoSparse
-isdefined(Base, :get_extension) ? (using ModelingToolkit) : (using ..ModelingToolkit)
+using ModelingToolkit
 
 function OptimizationBase.instantiate_function(
-        f, x, adtype::AutoSparse{<:AutoSymbolics, S, C}, p,
-        num_cons = 0) where {S, C}
+        f::OptimizationFunction{true}, x, adtype::AutoSparse{<:AutoSymbolics}, p,
+        num_cons = 0;
+        g = false, h = false, hv = false, fg = false, fgh = false,
+        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
+        lag_h = false)
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, x, p;
@@ -17,8 +20,8 @@ function OptimizationBase.instantiate_function(
         ucons = fill(0.0,
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
-    f = OptimizationProblem(sys, x, p, grad = true, hess = true,
-        sparse = true, cons_j = true, cons_h = true,
+    f = OptimizationProblem(sys, x, p, grad = g, hess = h,
+        sparse = true, cons_j = cons_j, cons_h = cons_h,
         cons_sparse = true).f
 
     grad = (G, θ, args...) -> f.grad(G, θ, p, args...)
@@ -52,8 +55,12 @@ function OptimizationBase.instantiate_function(
         observed = f.observed)
 end
 
-function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInitCache,
-        adtype::AutoSparse{<:AutoSymbolics, S, C}, num_cons = 0) where {S, C}
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
+        adtype::AutoSparse{<:AutoSymbolics}, num_cons = 0,
+        g = false, h = false, hv = false, fg = false, fgh = false,
+        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
+        lag_h = false)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, cache.u0,
@@ -63,8 +70,8 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
         ucons = fill(0.0,
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
-    f = OptimizationProblem(sys, cache.u0, cache.p, grad = true, hess = true,
-        sparse = true, cons_j = true, cons_h = true,
+    f = OptimizationProblem(sys, cache.u0, cache.p, grad = g, hess = h,
+        sparse = true, cons_j = cons_j, cons_h = cons_h,
         cons_sparse = true).f
 
     grad = (G, θ, args...) -> f.grad(G, θ, cache.p, args...)
@@ -98,8 +105,11 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
         observed = f.observed)
 end
 
-function OptimizationBase.instantiate_function(f, x, adtype::AutoSymbolics, p,
-        num_cons = 0)
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, x, adtype::AutoSymbolics, p,
+        num_cons = 0, g = false, h = false, hv = false, fg = false, fgh = false,
+        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
+        lag_h = false)
     p = isnothing(p) ? SciMLBase.NullParameters() : p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, x, p;
@@ -108,8 +118,8 @@ function OptimizationBase.instantiate_function(f, x, adtype::AutoSymbolics, p,
         ucons = fill(0.0,
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
-    f = OptimizationProblem(sys, x, p, grad = true, hess = true,
-        sparse = false, cons_j = true, cons_h = true,
+    f = OptimizationProblem(sys, x, p, grad = g, hess = h,
+        sparse = false, cons_j = cons_j, cons_h = cons_h,
         cons_sparse = false).f
 
     grad = (G, θ, args...) -> f.grad(G, θ, p, args...)
@@ -143,8 +153,12 @@ function OptimizationBase.instantiate_function(f, x, adtype::AutoSymbolics, p,
         observed = f.observed)
 end
 
-function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInitCache,
-        adtype::AutoSymbolics, num_cons = 0)
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
+        adtype::AutoSymbolics, num_cons = 0,
+        g = false, h = false, hv = false, fg = false, fgh = false,
+        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
+        lag_h = false)
     p = isnothing(cache.p) ? SciMLBase.NullParameters() : cache.p
 
     sys = complete(ModelingToolkit.modelingtoolkitize(OptimizationProblem(f, cache.u0,
@@ -154,8 +168,8 @@ function OptimizationBase.instantiate_function(f, cache::OptimizationBase.ReInit
         ucons = fill(0.0,
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
-    f = OptimizationProblem(sys, cache.u0, cache.p, grad = true, hess = true,
-        sparse = false, cons_j = true, cons_h = true,
+    f = OptimizationProblem(sys, cache.u0, cache.p, grad = g, hess = h,
+        sparse = false, cons_j = cons_j, cons_h = cons_h,
         cons_sparse = false).f
 
     grad = (G, θ, args...) -> f.grad(G, θ, cache.p, args...)
