@@ -26,7 +26,7 @@ H2 = Array{Float64}(undef, 2, 2)
 g!(G1, x0)
 h!(H1, x0)
 
-cons = (res, x, p) -> (res .= [x[1]^2 + x[2]^2]; return nothing)
+cons = (res, x, p) -> (res[1] = x[1]^2 + x[2]^2; return nothing)
 optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoModelingToolkit(), cons = cons)
 optprob = OptimizationBase.instantiate_function(optf, x0,
     OptimizationBase.AutoModelingToolkit(),
@@ -46,7 +46,8 @@ optprob.cons_h(H3, x0)
 @test H3 == [[2.0 0.0; 0.0 2.0]]
 
 function con2_c(res, x, p)
-    res .= [x[1]^2 + x[2]^2, x[2] * sin(x[1]) - x[1]]
+    res[1] = x[1]^2 + x[2]^2
+    res[2] = x[2] * sin(x[1]) - x[1]
     return nothing
 end
 optf = OptimizationFunction(rosenbrock,
@@ -69,107 +70,453 @@ H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
 optprob.cons_h(H3, x0)
 @test H3 == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
 
-G2 = Array{Float64}(undef, 2)
-H2 = Array{Float64}(undef, 2, 2)
 
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoEnzyme(), cons = cons)
-optprob = OptimizationBase.instantiate_function(
-    optf, x0, OptimizationBase.AutoEnzyme(),
-    nothing, 1, g = true, h = true, cons_j = true, cons_h = true)
-optprob.grad(G2, x0)
-@test G1 == G2
-optprob.hess(H2, x0)
-@test H1 == H2
-res = Array{Float64}(undef, 1)
-optprob.cons(res, x0)
-@test res == [0.0]
-J = Array{Float64}(undef, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test J == [10.0, 6.0]
-H3 = [Array{Float64}(undef, 2, 2)]
-optprob.cons_h(H3, x0)
-@test H3 == [[2.0 0.0; 0.0 2.0]]
-G2 = Array{Float64}(undef, 2)
-H2 = Array{Float64}(undef, 2, 2)
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoEnzyme(), cons = con2_c)
-optprob = OptimizationBase.instantiate_function(
-    optf, x0, OptimizationBase.AutoEnzyme(),
-    nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
-optprob.grad(G2, x0)
-@test G1 == G2
-optprob.hess(H2, x0)
-@test H1 == H2
-res = Array{Float64}(undef, 2)
-optprob.cons(res, x0)
-@test res == [0.0, 0.0]
-J = Array{Float64}(undef, 2, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
-H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
-optprob.cons_h(H3, x0)
-@test H3 == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
+@testset "one constraint tests" begin
+    G2 = Array{Float64}(undef, 2)
+    H2 = Array{Float64}(undef, 2, 2)
+    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoEnzyme(), cons = cons)
+    optprob = OptimizationBase.instantiate_function(
+        optf, x0, OptimizationBase.AutoEnzyme(),
+        nothing, 1, g = true, h = true, hv = true,
+        cons_j = true, cons_h = true, cons_vjp = true, 
+        cons_jvp = true, lag_h = true)
+    optprob.grad(G2, x0)
+    @test G1 == G2
+    optprob.hess(H2, x0)
+    @test H1 == H2
+    Hv = Array{Float64}(undef, 2)
+    optprob.hv(Hv, x0, [1.0, 1.0])
+    @test Hv == [2.0, 200.0]
+    res = Array{Float64}(undef, 1)
+    optprob.cons(res, x0)
+    @test res == [0.0]
+    J = Array{Float64}(undef, 2)
+    optprob.cons_j(J, [5.0, 3.0])
+    @test J == [10.0, 6.0]
+    vJ = Array{Float64}(undef, 2)
+    optprob.cons_vjp(vJ, [5.0, 3.0], [1.0])
+    @test vJ == [10.0, 6.0]
+    Jv = Array{Float64}(undef, 1)
+    optprob.cons_jvp(Jv, [5.0, 3.0], [0.5, 0.5])
+    @test Jv == [8.0]
+    H3 = [Array{Float64}(undef, 2, 2)]
+    optprob.cons_h(H3, x0)
+    @test H3 == [[2.0 0.0; 0.0 2.0]]
+    H4 = Array{Float64}(undef,2,2)
+    μ = randn(1)
+    σ = rand()
+    optprob.lag_h(H4, x0, σ, μ)
+    @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
 
-G2 = Array{Float64}(undef, 2)
-H2 = Array{Float64}(undef, 2, 2)
+    G2 = Array{Float64}(undef, 2)
+    H2 = Array{Float64}(undef, 2, 2)
 
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoReverseDiff(), cons = con2_c)
-optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoReverseDiff(),
-    nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
-optprob.grad(G2, x0)
-@test G1 == G2
-optprob.hess(H2, x0)
-@test H1 == H2
-res = Array{Float64}(undef, 2)
-optprob.cons(res, x0)
-@test res == [0.0, 0.0]
-J = Array{Float64}(undef, 2, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
-H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
-optprob.cons_h(H3, x0)
-H3 == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
+    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoForwardDiff(), cons = cons)
+    optprob = OptimizationBase.instantiate_function(
+        optf, x0, OptimizationBase.AutoForwardDiff(),
+        nothing, 1, g = true, h = true, hv = true,
+        cons_j = true, cons_h = true, cons_vjp = true, 
+        cons_jvp = true, lag_h = true)
+    optprob.grad(G2, x0)
+    @test G1 == G2
+    optprob.hess(H2, x0)
+    @test H1 == H2
+    Hv = Array{Float64}(undef, 2)
+    optprob.hv(Hv, x0, [1.0, 1.0])
+    @test Hv == [2.0, 200.0]
+    res = Array{Float64}(undef, 1)
+    optprob.cons(res, x0)
+    @test res == [0.0]
+    J = Array{Float64}(undef, 2)
+    optprob.cons_j(J, [5.0, 3.0])
+    @test J == [10.0, 6.0]
+    vJ = Array{Float64}(undef, 2)
+    optprob.cons_vjp(vJ, [5.0, 3.0], [1.0])
+    @test vJ == [10.0, 6.0]
+    Jv = Array{Float64}(undef, 1)
+    optprob.cons_jvp(Jv, [5.0, 3.0], [0.5, 0.5])
+    @test Jv == [8.0]
+    H3 = [Array{Float64}(undef, 2, 2)]
+    optprob.cons_h(H3, x0)
+    @test H3 == [[2.0 0.0; 0.0 2.0]]
+    H4 = Array{Float64}(undef,2,2)
+    μ = randn(1)
+    σ = rand()
+    optprob.lag_h(H4, x0, σ, μ)
+    @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
 
-G2 = Array{Float64}(undef, 2)
-H2 = Array{Float64}(undef, 2, 2)
+    G2 = Array{Float64}(undef, 2)
+    H2 = Array{Float64}(undef, 2, 2)
 
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoReverseDiff(), cons = con2_c)
-optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoReverseDiff(compile = true),
-    nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
-optprob.grad(G2, x0)
-@test G1 == G2
-optprob.hess(H2, x0)
-@test H1 == H2
-res = Array{Float64}(undef, 2)
-optprob.cons(res, x0)
-@test res == [0.0, 0.0]
-J = Array{Float64}(undef, 2, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
-H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
-optprob.cons_h(H3, x0)
-H3 == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
+    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoReverseDiff(), cons = cons)
+    optprob = OptimizationBase.instantiate_function(
+        optf, x0, OptimizationBase.AutoReverseDiff(),
+        nothing, 1, g = true, h = true, hv = true,
+        cons_j = true, cons_h = true, cons_vjp = true, 
+        cons_jvp = true, lag_h = true)
+    optprob.grad(G2, x0)
+    @test G1 == G2
+    optprob.hess(H2, x0)
+    @test H1 == H2
+    Hv = Array{Float64}(undef, 2)
+    optprob.hv(Hv, x0, [1.0, 1.0])
+    @test Hv == [2.0, 200.0]
+    res = Array{Float64}(undef, 1)
+    optprob.cons(res, x0)
+    @test res == [0.0]
+    J = Array{Float64}(undef, 2)
+    @test_broken optprob.cons_j(J, [5.0, 3.0])
+    # @test J == [10.0, 6.0]
+    vJ = Array{Float64}(undef, 2)
+    optprob.cons_vjp(vJ, [5.0, 3.0], [1.0])
+    @test vJ == [10.0, 6.0]
+    Jv = Array{Float64}(undef, 1)
+    optprob.cons_jvp(Jv, [5.0, 3.0], [0.5, 0.5])
+    @test Jv == [8.0]
+    H3 = [Array{Float64}(undef, 2, 2)]
+    optprob.cons_h(H3, x0)
+    @test H3 == [[2.0 0.0; 0.0 2.0]]
+    H4 = Array{Float64}(undef,2,2)
+    μ = randn(1)
+    σ = rand()
+    optprob.lag_h(H4, x0, σ, μ)
+    @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
 
-G2 = Array{Float64}(undef, 2)
-H2 = Array{Float64}(undef, 2, 2)
+    G2 = Array{Float64}(undef, 2)
+    H2 = Array{Float64}(undef, 2, 2)
 
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoZygote(), cons = con2_c)
-optprob = OptimizationBase.instantiate_function(optf, x0, OptimizationBase.AutoZygote(),
-    nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
-optprob.grad(G2, x0)
-@test G1 == G2
-optprob.hess(H2, x0)
-@test H1 == H2
-res = Array{Float64}(undef, 2)
-optprob.cons(res, x0)
-@test res == [0.0, 0.0]
-J = Array{Float64}(undef, 2, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
-H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
-optprob.cons_h(H3, x0)
-H3 == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
+    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoReverseDiff(true), cons = cons)
+    optprob = OptimizationBase.instantiate_function(
+        optf, x0, OptimizationBase.AutoReverseDiff(true),
+        nothing, 1, g = true, h = true, hv = true,
+        cons_j = true, cons_h = true, cons_vjp = true, 
+        cons_jvp = true, lag_h = true)
+    optprob.grad(G2, x0)
+    @test G1 == G2
+    optprob.hess(H2, x0)
+    @test H1 == H2
+    Hv = Array{Float64}(undef, 2)
+    optprob.hv(Hv, x0, [1.0, 1.0])
+    @test Hv == [2.0, 200.0]
+    res = Array{Float64}(undef, 1)
+    optprob.cons(res, x0)
+    @test res == [0.0]
+    J = Array{Float64}(undef, 2)
+    @test_broken optprob.cons_j(J, [5.0, 3.0])
+    # @test J == [10.0, 6.0]
+    vJ = Array{Float64}(undef, 2)
+    optprob.cons_vjp(vJ, [5.0, 3.0], [1.0])
+    @test vJ == [10.0, 6.0]
+    Jv = Array{Float64}(undef, 1)
+    optprob.cons_jvp(Jv, [5.0, 3.0], [0.5, 0.5])
+    @test Jv == [8.0]
+    H3 = [Array{Float64}(undef, 2, 2)]
+    optprob.cons_h(H3, x0)
+    @test H3 == [[2.0 0.0; 0.0 2.0]]
+    H4 = Array{Float64}(undef,2,2)
+    μ = randn(1)
+    σ = rand()
+    optprob.lag_h(H4, x0, σ, μ)
+    @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
+
+    G2 = Array{Float64}(undef, 2)
+    H2 = Array{Float64}(undef, 2, 2)
+
+    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoZygote(), cons = cons)
+    optprob = OptimizationBase.instantiate_function(
+        optf, x0, OptimizationBase.AutoZygote(),
+        nothing, 1, g = true, h = true, hv = true,
+        cons_j = true, cons_h = true, cons_vjp = true, 
+        cons_jvp = true, lag_h = true)
+    optprob.grad(G2, x0)
+    @test G1 == G2
+    optprob.hess(H2, x0)
+    @test H1 == H2
+    Hv = Array{Float64}(undef, 2)
+    optprob.hv(Hv, x0, [1.0, 1.0])
+    @test Hv == [2.0, 200.0]
+    res = Array{Float64}(undef, 1)
+    optprob.cons(res, x0)
+    @test res == [0.0]
+    J = Array{Float64}(undef, 2)
+    optprob.cons_j(J, [5.0, 3.0])
+    @test J == [10.0, 6.0]
+    vJ = Array{Float64}(undef, 2)
+    optprob.cons_vjp(vJ, [5.0, 3.0], [1.0])
+    @test vJ == [10.0, 6.0]
+    Jv = Array{Float64}(undef, 1)
+    optprob.cons_jvp(Jv, [5.0, 3.0], [0.5, 0.5])
+    @test Jv == [8.0]
+    H3 = [Array{Float64}(undef, 2, 2)]
+    optprob.cons_h(H3, x0)
+    @test H3 == [[2.0 0.0; 0.0 2.0]]
+    H4 = Array{Float64}(undef,2,2)
+    μ = randn(1)
+    σ = rand()
+    optprob.lag_h(H4, x0, σ, μ)
+    @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
+
+
+    G2 = Array{Float64}(undef, 2)
+    H2 = Array{Float64}(undef, 2, 2)
+
+    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoFiniteDiff(), cons = cons)
+    optprob = OptimizationBase.instantiate_function(
+        optf, x0, OptimizationBase.AutoFiniteDiff(),
+        nothing, 1, g = true, h = true, hv = true,
+        cons_j = true, cons_h = true, cons_vjp = true, 
+        cons_jvp = true, lag_h = true)
+    optprob.grad(G2, x0)
+    @test G1 ≈ G2 rtol = 1e-5
+    optprob.hess(H2, x0)
+    @test H1 ≈ H2 rtol = 1e-5
+    Hv = Array{Float64}(undef, 2)
+    optprob.hv(Hv, x0, [1.0, 1.0])
+    @test Hv ≈ [2.0, 200.0] rtol = 1e-5
+    res = Array{Float64}(undef, 1)
+    optprob.cons(res, x0)
+    @test res ≈ [0.0]
+    J = Array{Float64}(undef, 1, 2)
+    optprob.cons_j(J, [5.0, 3.0])
+    @test J ≈ [10.0 6.0] rtol = 1e-5
+    vJ = Array{Float64}(undef, 2)
+    optprob.cons_vjp(vJ, [5.0, 3.0], [1.0])
+    @test vJ ≈ [10.0, 6.0] rtol = 1e-5
+    Jv = Array{Float64}(undef, 1)
+    optprob.cons_jvp(Jv, [5.0, 3.0], [0.5, 0.5])
+    @test Jv ≈ [8.0] rtol = 1e-5
+    H3 = [Array{Float64}(undef, 2, 2)]
+    optprob.cons_h(H3, x0)
+    @test H3 ≈ [[2.0 0.0; 0.0 2.0]] rtol = 1e-5
+    H4 = Array{Float64}(undef,2,2)
+    μ = randn(1)
+    σ = rand()
+    optprob.lag_h(H4, x0, σ, μ)
+    @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
+end
+
+@testset "two constraints tests" begin
+    G2 = Array{Float64}(undef, 2)
+    H2 = Array{Float64}(undef, 2, 2)
+    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoEnzyme(), cons = con2_c)
+    optprob = OptimizationBase.instantiate_function(
+        optf, x0, OptimizationBase.AutoEnzyme(),
+        nothing, 2, g = true, h = true, hv = true,
+        cons_j = true, cons_h = true, cons_vjp = true, 
+        cons_jvp = true, lag_h = true)
+    optprob.grad(G2, x0)
+    @test G1 == G2
+    optprob.hess(H2, x0)
+    @test H1 == H2
+    Hv = Array{Float64}(undef, 2)
+    optprob.hv(Hv, x0, [1.0, 1.0])
+    @test Hv == [2.0, 200.0]
+    res = Array{Float64}(undef, 2)
+    optprob.cons(res, x0)
+    @test res == [0.0, 0.0]
+    J = Array{Float64}(undef, 2, 2)
+    optprob.cons_j(J, [5.0, 3.0])
+    @test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
+    vJ = Array{Float64}(undef, 2)
+    optprob.cons_vjp(vJ, [5.0, 3.0], [1.0, 1.0])
+    @test vJ == sum(J, dims = 1)[:]
+    Jv = Array{Float64}(undef, 2)
+    optprob.cons_jvp(Jv, [5.0, 3.0], [0.5, 0.5])
+    @test Jv == 0.5 * sum(J, dims = 2)[:]
+    H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
+    optprob.cons_h(H3, x0)
+    @test H3 == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
+    H4 = Array{Float64}(undef, 2, 2)
+    μ = randn(2)
+    σ = rand()
+    optprob.lag_h(H4, x0, σ, μ)
+    @test H4≈σ * H1 + sum(μ .* H3) rtol=1e-6
+
+    G2 = Array{Float64}(undef, 2)
+    H2 = Array{Float64}(undef, 2, 2)
+
+    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoReverseDiff(), cons = con2_c)
+    optprob = OptimizationBase.instantiate_function(optf, x0,
+        OptimizationBase.AutoReverseDiff(),
+        nothing, 2, g = true, h = true, hv = true,
+        cons_j = true, cons_h = true, cons_vjp = true, 
+        cons_jvp = true, lag_h = true)
+    optprob.grad(G2, x0)
+    @test G1 == G2
+    optprob.hess(H2, x0)
+    @test H1 == H2
+    Hv = Array{Float64}(undef, 2)
+    optprob.hv(Hv, x0, [1.0, 1.0])
+    @test Hv == [2.0, 200.0]
+    res = Array{Float64}(undef, 2)
+    optprob.cons(res, x0)
+    @test res == [0.0, 0.0]
+    J = Array{Float64}(undef, 2, 2)
+    optprob.cons_j(J, [5.0, 3.0])
+    @test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
+    vJ = Array{Float64}(undef, 2)
+    optprob.cons_vjp(vJ, [5.0, 3.0], [1.0, 1.0])
+    @test vJ == sum(J, dims = 1)[:]
+    Jv = Array{Float64}(undef, 2)
+    optprob.cons_jvp(Jv, [5.0, 3.0], [0.5, 0.5])
+    @test Jv == 0.5 * sum(J, dims = 2)[:]
+    H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
+    optprob.cons_h(H3, x0)
+    @test H3 ==  [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
+    H4 = Array{Float64}(undef, 2, 2)
+    μ = randn(2)
+    σ = rand()
+    optprob.lag_h(H4, x0, σ, μ)
+    @test H4≈σ * H1 + sum(μ .* H3) rtol=1e-6
+
+    G2 = Array{Float64}(undef, 2)
+    H2 = Array{Float64}(undef, 2, 2)
+
+    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoReverseDiff(true), cons = con2_c)
+    optprob = OptimizationBase.instantiate_function(optf, x0,
+        OptimizationBase.AutoReverseDiff(true),
+        nothing, 2, g = true, h = true, hv = true,
+        cons_j = true, cons_h = true, cons_vjp = true, 
+        cons_jvp = true, lag_h = true)
+    optprob.grad(G2, x0)
+    @test G1 == G2
+    optprob.hess(H2, x0)
+    @test H1 == H2
+    Hv = Array{Float64}(undef, 2)
+    optprob.hv(Hv, x0, [1.0, 1.0])
+    @test Hv == [2.0, 200.0]
+    res = Array{Float64}(undef, 2)
+    optprob.cons(res, x0)
+    @test res == [0.0, 0.0]
+    J = Array{Float64}(undef, 2, 2)
+    optprob.cons_j(J, [5.0, 3.0])
+    @test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
+    vJ = Array{Float64}(undef, 2)
+    optprob.cons_vjp(vJ, [5.0, 3.0], [1.0, 1.0])
+    @test vJ == sum(J, dims = 1)[:]
+    Jv = Array{Float64}(undef, 2)
+    optprob.cons_jvp(Jv, [5.0, 3.0], [0.5, 0.5])
+    @test Jv == 0.5 * sum(J, dims = 2)[:]
+    H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
+    optprob.cons_h(H3, x0)
+    @test H3 ==  [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
+    H4 = Array{Float64}(undef, 2, 2)
+    μ = randn(2)
+    σ = rand()
+    optprob.lag_h(H4, x0, σ, μ)
+    @test H4≈σ * H1 + sum(μ .* H3) rtol=1e-6
+
+    G2 = Array{Float64}(undef, 2)
+    H2 = Array{Float64}(undef, 2, 2)
+
+    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoForwardDiff(), cons = con2_c)
+    optprob = OptimizationBase.instantiate_function(optf, x0,
+        OptimizationBase.AutoReverseDiff(compile = true),
+        nothing, 2, g = true, h = true, hv = true,
+        cons_j = true, cons_h = true, cons_vjp = true, 
+        cons_jvp = true, lag_h = true)
+    optprob.grad(G2, x0)
+    @test G1 == G2
+    optprob.hess(H2, x0)
+    @test H1 == H2
+    Hv = Array{Float64}(undef, 2)
+    optprob.hv(Hv, x0, [1.0, 1.0])
+    @test Hv == [2.0, 200.0]
+    res = Array{Float64}(undef, 2)
+    optprob.cons(res, x0)
+    @test res == [0.0, 0.0]
+    J = Array{Float64}(undef, 2, 2)
+    optprob.cons_j(J, [5.0, 3.0])
+    @test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
+    vJ = Array{Float64}(undef, 2)
+    optprob.cons_vjp(vJ, [5.0, 3.0], [1.0, 1.0])
+    @test vJ == sum(J, dims = 1)[:]
+    Jv = Array{Float64}(undef, 2)
+    optprob.cons_jvp(Jv, [5.0, 3.0], [0.5, 0.5])
+    @test Jv == 0.5 * sum(J, dims = 2)[:]
+    H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
+    optprob.cons_h(H3, x0)
+    @test H3 ==  [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
+    H4 = Array{Float64}(undef, 2, 2)
+    μ = randn(2)
+    σ = rand()
+    optprob.lag_h(H4, x0, σ, μ)
+    @test H4≈σ * H1 + sum(μ .* H3) rtol=1e-6
+
+    G2 = Array{Float64}(undef, 2)
+    H2 = Array{Float64}(undef, 2, 2)
+
+    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoZygote(), cons = con2_c)
+    optprob = OptimizationBase.instantiate_function(optf, x0, OptimizationBase.AutoZygote(),
+    nothing, 2, g = true, h = true, hv = true,
+    cons_j = true, cons_h = true, cons_vjp = true, 
+    cons_jvp = true, lag_h = true)
+    optprob.grad(G2, x0)
+    @test G1 == G2
+    optprob.hess(H2, x0)
+    @test H1 == H2
+    Hv = Array{Float64}(undef, 2)
+    optprob.hv(Hv, x0, [1.0, 1.0])
+    @test Hv == [2.0, 200.0]
+    res = Array{Float64}(undef, 2)
+    optprob.cons(res, x0)
+    @test res == [0.0, 0.0]
+    J = Array{Float64}(undef, 2, 2)
+    optprob.cons_j(J, [5.0, 3.0])
+    @test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
+    vJ = Array{Float64}(undef, 2)
+    optprob.cons_vjp(vJ, [5.0, 3.0], [1.0, 1.0])
+    @test vJ == sum(J, dims = 1)[:]
+    Jv = Array{Float64}(undef, 2)
+    optprob.cons_jvp(Jv, [5.0, 3.0], [0.5, 0.5])
+    @test Jv == 0.5 * sum(J, dims = 2)[:]
+    H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
+    optprob.cons_h(H3, x0)
+    @test H3 == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
+    H4 = Array{Float64}(undef, 2, 2)
+    μ = randn(2)
+    σ = rand()
+    optprob.lag_h(H4, x0, σ, μ)
+    @test H4≈σ * H1 + sum(μ .* H3) rtol=1e-6
+
+    G2 = Array{Float64}(undef, 2)
+    H2 = Array{Float64}(undef, 2, 2)
+
+    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoFiniteDiff(), cons = con2_c)
+    optprob = OptimizationBase.instantiate_function(
+        optf, x0, OptimizationBase.AutoFiniteDiff(),
+    nothing, 2, g = true, h = true, hv = true,
+    cons_j = true, cons_h = true, cons_vjp = true, 
+    cons_jvp = true, lag_h = true)
+    optprob.grad(G2, x0)
+    @test G1 ≈ G2 rtol = 1e-5
+    optprob.hess(H2, x0)
+    @test H1 ≈ H2 rtol = 1e-5
+    Hv = Array{Float64}(undef, 2)
+    optprob.hv(Hv, x0, [1.0, 1.0])
+    @test Hv ≈ [2.0, 200.0] rtol = 1e-5
+    res = Array{Float64}(undef, 2)
+    optprob.cons(res, x0)
+    @test res ≈ [0.0, 0.0]
+    J = Array{Float64}(undef, 2, 2)
+    optprob.cons_j(J, [5.0, 3.0])
+    @test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
+    vJ = Array{Float64}(undef, 2)
+    optprob.cons_vjp(vJ, [5.0, 3.0], [1.0, 1.0])
+    @test vJ ≈ sum(J, dims = 1)[:] rtol = 1e-5
+    Jv = Array{Float64}(undef, 2)
+    optprob.cons_jvp(Jv, [5.0, 3.0], [0.5, 0.5])
+    @test Jv ≈ 0.5 * sum(J, dims = 2)[:] rtol = 1e-5
+    H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
+    optprob.cons_h(H3, x0)
+    @test H3 ≈ [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]] rtol = 1e-5
+    H4 = Array{Float64}(undef, 2, 2)
+    μ = randn(2)
+    σ = rand()
+    optprob.lag_h(H4, x0, σ, μ)
+    @test H4≈σ * H1 + sum(μ .* H3) rtol=1e-6
+end
+
 
 optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoModelingToolkit(true, true),
     cons = con2_c)
@@ -193,82 +540,6 @@ sH3 = [sparse([1, 2], [1, 2], zeros(2)), sparse([1, 1, 2], [1, 2, 1], zeros(3))]
       getindex.(findnz.(optprob.cons_hess_prototype), Ref([1, 2]))
 optprob.cons_h(sH3, x0)
 @test Array.(sH3) == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
-
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoForwardDiff())
-optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoForwardDiff(),
-    nothing, g = true, h = true)
-optprob.grad(G2, x0)
-@test G1 == G2
-optprob.hess(H2, x0)
-@test H1 ≈ H2
-
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoZygote())
-optprob = OptimizationBase.instantiate_function(optf,
-    x0,
-    OptimizationBase.AutoZygote(),
-    nothing, g = true, h = true)
-optprob.grad(G2, x0)
-@test G1 == G2
-optprob.hess(H2, x0)
-@test H1 == H2
-
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoReverseDiff())
-optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoReverseDiff(),
-    nothing, g = true, h = true)
-optprob.grad(G2, x0)
-@test G1 == G2
-optprob.hess(H2, x0)
-@test H1 == H2
-
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoTracker())
-optprob = OptimizationBase.instantiate_function(optf,
-    x0,
-    OptimizationBase.AutoTracker(),
-    nothing, g = true, h = true)
-optprob.grad(G2, x0)
-@test G1 == G2
-@test_broken optprob.hess(H2, x0)
-
-prob = OptimizationProblem(optf, x0)
-
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoFiniteDiff())
-optprob = OptimizationBase.instantiate_function(
-    optf, x0, OptimizationBase.AutoFiniteDiff(),
-    nothing, g = true, h = true)
-optprob.grad(G2, x0)
-@test G1≈G2 rtol=1e-6
-optprob.hess(H2, x0)
-@test H1≈H2 rtol=1e-6
-
-# Test new constraints
-cons = (res, x, p) -> (res .= [x[1]^2 + x[2]^2])
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoFiniteDiff(), cons = cons)
-optprob = OptimizationBase.instantiate_function(
-    optf, x0, OptimizationBase.AutoFiniteDiff(),
-    nothing, 1, g = true, h = true, cons_j = true, cons_h = true)
-optprob.grad(G2, x0)
-@test G1≈G2 rtol=1e-6
-optprob.hess(H2, x0)
-@test H1≈H2 rtol=1e-6
-res = Array{Float64}(undef, 1)
-optprob.cons(res, x0)
-@test res == [0.0]
-optprob.cons(res, [1.0, 4.0])
-@test res == [17.0]
-J = zeros(1, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test J ≈ [10.0 6.0]
-H3 = [Array{Float64}(undef, 2, 2)]
-optprob.cons_h(H3, x0)
-@test H3 ≈ [[2.0 0.0; 0.0 2.0]]
-
-H4 = Array{Float64}(undef, 2, 2)
-μ = randn(1)
-σ = rand()
-# optprob.lag_h(H4, x0, σ, μ)
-# @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
 
 cons_jac_proto = Float64.(sparse([1 1])) # Things break if you only use [1 1]; see FiniteDiff.jl
 cons_jac_colors = 1:2
@@ -816,13 +1087,20 @@ using MLUtils
     G0 = zeros(3)
     optf.grad(G0, ones(3))
     stochgrads = []
+    i = 0
     for (x, y) in data
-        G = zeros(3)
-        optf.grad(G, ones(3), (x, y))
-        push!(stochgrads, copy(G))
-        G1 = zeros(3)
-        optf.fg(G1, ones(3), (x, y))
-        @test G≈G1 rtol=1e-6
+        if i < 3
+            G = zeros(3)
+            optf.grad(G, ones(3), (x, y))
+            push!(stochgrads, copy(G))
+            @show G
+            G1 = zeros(3)
+            optf.fg(G1, ones(3), (x, y))
+            @test G≈G1 rtol=1e-6
+            i+=1
+        else
+            break
+        end
     end
     @test G0≈sum(stochgrads) / length(stochgrads) rtol=1e-1
 

@@ -3,7 +3,9 @@ import OptimizationBase.ArrayInterface
 import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.LinearAlgebra: I
 import DifferentiationInterface
-import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp,
+import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp, 
+                                 prepare_pullback, prepare_pushforward, pullback!, pushforward!,
+                                 pullback, pushforward,
                                  prepare_jacobian, value_and_gradient!, value_and_gradient,
                                  value_derivative_and_second_derivative!,
                                  value_derivative_and_second_derivative,
@@ -128,8 +130,11 @@ function instantiate_function(
             return _res
         end
 
-        function lagrangian(x, σ = one(eltype(x)), λ = ones(eltype(x), num_cons))
-            return σ * _f(x) + dot(λ, cons_oop(x))
+        function lagrangian(augvars)
+            θ = augvars[1:length(x)]
+            σ = augvars[length(x)+1]
+            λ = augvars[length(x)+2:end]
+            return σ * _f(θ) + dot(λ, cons_oop(θ))
         end
     end
 
@@ -150,7 +155,7 @@ function instantiate_function(
     end
 
     if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
-        extras_pullback = prepare_pullback(cons_oop, adtype, x)
+        extras_pullback = prepare_pullback(cons_oop, adtype, x, ones(eltype(x), num_cons))
         function cons_vjp!(J, θ, v)
             pullback!(cons_oop, J, adtype, θ, v, extras_pullback)
         end
@@ -161,7 +166,7 @@ function instantiate_function(
     end
 
     if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
-        extras_pushforward = prepare_pushforward(cons_oop, adtype, x)
+        extras_pushforward = prepare_pushforward(cons_oop, adtype, x, ones(eltype(x), length(x)))
         function cons_jvp!(J, θ, v)
             pushforward!(cons_oop, J, adtype, θ, v, extras_pushforward)
         end
@@ -191,7 +196,7 @@ function instantiate_function(
     lag_hess_prototype = f.lag_hess_prototype
 
     if cons !== nothing && lag_h == true && f.lag_h === nothing
-        lag_extras = prepare_hessian(lagrangian, soadtype, x)
+        lag_extras = prepare_hessian(lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
         lag_hess_prototype = zeros(Bool, length(x), length(x))
 
         function lag_h!(H::AbstractMatrix, θ, σ, λ)
@@ -199,11 +204,11 @@ function instantiate_function(
                 cons_h(H, θ)
                 H *= λ
             else
-                hessian!(x -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
+                H .= @view(hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[1:length(θ), 1:length(θ)])
             end
         end
 
-        function lag_h!(h, θ, σ, λ)
+        function lag_h!(h::AbstractVector, θ, σ, λ)
             H = eltype(θ).(lag_hess_prototype)
             hessian!(x -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
             k = 0

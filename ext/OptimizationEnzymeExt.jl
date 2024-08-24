@@ -43,7 +43,7 @@ function hv_f2_alloc(x, f, p)
     Enzyme.autodiff_deferred(Enzyme.Reverse,
         firstapply,
         Active,
-        f,
+        Const(f),
         Enzyme.Duplicated(x, dx),
         Const(p)
     )
@@ -188,7 +188,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         function hv!(H, θ, v)
             H .= Enzyme.autodiff(
                 Enzyme.Forward, hv_f2_alloc, DuplicatedNoNeed, Duplicated(θ, v),
-                Const(_f), Const(f.f), Const(p)
+                Const(f.f), Const(p)
             )[1]
         end
     elseif hv == true
@@ -247,7 +247,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         cons_j! = nothing
     end
 
-    if cons !== nothing && cons_vjp == true && f.cons_vjp == true
+    if cons !== nothing && cons_vjp == true && f.cons_vjp === nothing
         cons_res = zeros(eltype(x), num_cons)
         function cons_vjp!(res, θ, v)
             Enzyme.make_zero!(res)
@@ -267,7 +267,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         cons_vjp! = nothing
     end
 
-    if cons !== nothing && cons_jvp == true && f.cons_jvp == true
+    if cons !== nothing && cons_jvp == true && f.cons_jvp === nothing
         cons_res = zeros(eltype(x), num_cons)
 
         function cons_jvp!(res, θ, v)
@@ -348,6 +348,28 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
                 vec_lagv = lag_vdbθ[i]
                 h[(k + 1):(k + i)] .= @view(vec_lagv[1:i])
                 k += i
+            end
+        end
+
+        function lag_h!(H::AbstractMatrix, θ, σ, μ)
+            Enzyme.make_zero!(H)
+            Enzyme.make_zero!(lag_bθ)
+            Enzyme.make_zero!.(lag_vdbθ)
+
+            Enzyme.autodiff(Enzyme.Forward,
+                lag_grad,
+                Enzyme.BatchDuplicated(θ, lag_vdθ),
+                Enzyme.BatchDuplicatedNoNeed(lag_bθ, lag_vdbθ),
+                Const(lagrangian),
+                Const(f.f),
+                Const(f.cons),
+                Const(p),
+                Const(σ),
+                Const(μ)
+            )
+
+            for i in eachindex(θ)
+                H[i, :] .= lag_vdbθ[i]
             end
         end
     elseif lag_h == true && cons !== nothing
