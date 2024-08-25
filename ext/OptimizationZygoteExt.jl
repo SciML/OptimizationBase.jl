@@ -352,8 +352,11 @@ function OptimizationBase.instantiate_function(
             return copy(_res)
         end
 
-        function lagrangian(x, σ = one(eltype(x)), λ = ones(eltype(x), num_cons))
-            return σ * _f(x) + dot(λ, cons_oop(x))
+        function lagrangian(augvars)
+            θ = augvars[1:length(x)]
+            σ = augvars[length(x)+1]
+            λ = augvars[length(x)+2:end]
+            return σ * _f(θ) + dot(λ, cons(θ))
         end
     end
 
@@ -421,8 +424,8 @@ function OptimizationBase.instantiate_function(
 
     lag_hess_prototype = f.lag_hess_prototype
     if cons !== nothing && cons_h == true && f.lag_h === nothing
-        lag_extras = prepare_hessian(lagrangian, soadtype, x)
-        lag_hess_prototype = lag_extras.coloring_result.S
+        lag_extras = prepare_hessian(lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
+        lag_hess_prototype = lag_extras.coloring_result.S[1:length(θ), 1:length(θ)]
         lag_hess_colors = lag_extras.coloring_result.color
 
         function lag_h!(H::AbstractMatrix, θ, σ, λ)
@@ -430,13 +433,12 @@ function OptimizationBase.instantiate_function(
                 cons_h(H, θ)
                 H *= λ
             else
-                hessian!(x -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
+                H .= hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[1:length(θ), 1:length(θ)]
             end
         end
 
         function lag_h!(h, θ, σ, λ)
-            H = eltype(θ).(lag_hess_prototype)
-            hessian!((x) -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
+            H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[1:length(θ), 1:length(θ)]
             k = 0
             rows, cols, _ = findnz(H)
             for (i, j) in zip(rows, cols)

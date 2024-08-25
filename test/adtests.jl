@@ -518,246 +518,252 @@ end
 end
 
 
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoModelingToolkit(true, true),
-    cons = con2_c)
-optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoModelingToolkit(true, true),
-    nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
-using SparseArrays
-sH = sparse([1, 1, 2, 2], [1, 2, 1, 2], zeros(4))
-@test findnz(sH)[1:2] == findnz(optprob.hess_prototype)[1:2]
-optprob.hess(sH, x0)
-@test sH == H2
-res = Array{Float64}(undef, 2)
-optprob.cons(res, x0)
-@test res == [0.0, 0.0]
-sJ = sparse([1, 1, 2, 2], [1, 2, 1, 2], zeros(4))
-@test findnz(sJ)[1:2] == findnz(optprob.cons_jac_prototype)[1:2]
-optprob.cons_j(sJ, [5.0, 3.0])
-@test all(isapprox(sJ, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
-sH3 = [sparse([1, 2], [1, 2], zeros(2)), sparse([1, 1, 2], [1, 2, 1], zeros(3))]
-@test getindex.(findnz.(sH3), Ref([1, 2])) ==
-      getindex.(findnz.(optprob.cons_hess_prototype), Ref([1, 2]))
-optprob.cons_h(sH3, x0)
-@test Array.(sH3) == [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
+@testset "Sparse Tests" begin
+    # Define a sparse objective function
+    function sparse_objective(x, p)
+        return x[1]^2 + 100 * (x[3] - x[2]^2)^2
+    end
 
-cons_jac_proto = Float64.(sparse([1 1])) # Things break if you only use [1 1]; see FiniteDiff.jl
-cons_jac_colors = 1:2
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoFiniteDiff(), cons = cons,
-    cons_jac_prototype = cons_jac_proto,
-    cons_jac_colorvec = cons_jac_colors)
-optprob = OptimizationBase.instantiate_function(
-    optf, x0, OptimizationBase.AutoFiniteDiff(),
-    nothing, 1, g = true, h = true, cons_j = true, cons_h = true)
-@test optprob.cons_jac_prototype == sparse([1.0 1.0]) # make sure it's still using it
-@test optprob.cons_jac_colorvec == 1:2
-J = zeros(1, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test J ≈ [10.0 6.0]
+    # Define sparse constraints
+    function sparse_constraints(res, x, p)
+        res[1] = x[1] + x[2] + (x[2]*x[3])^2 - 1
+        res[2] = x[1]^2 + x[3]^2 - 1
+    end
 
-function con2_c(res, x, p)
-    res .= [x[1]^2 + x[2]^2, x[2] * sin(x[1]) - x[1]]
+    # Initial point
+        x0 = [0.5, 0.5, 0.5]
+
+    # Create OptimizationFunction
+    optf = OptimizationFunction(sparse_objective, OptimizationBase.AutoSparseForwardDiff(),
+            cons = sparse_constraints)
+
+    # Instantiate the optimization problem
+    optprob = OptimizationBase.instantiate_function(optf, x0,
+    OptimizationBase.AutoSparseForwardDiff(),
+    nothing, 2, g = true, h = true, cons_j = true, cons_h = true, lag_h = true)
+    # Test gradient
+    G = zeros(3)
+    optprob.grad(G, x0)
+    @test G ≈ [1.0, -50.0, 50.0]
+    
+    # Test Hessian
+    H_expected = sparse([1, 2, 2, 3, 3], [1, 2, 3, 2, 3], [2.0, 100.0, -200.0, -200.0, 200.0], 3, 3)
+    H = similar(optprob.hess_prototype, Float64)
+    optprob.hess(H, x0)
+    @test H ≈ H_expected
+    @test nnz(H) == 5  # Check sparsity
+    
+    # Test constraints
+    res = zeros(2)
+    optprob.cons(res, x0)
+    @test res ≈ [0.0625, -0.5]
+    
+    # Test constraint Jacobian
+    J_expected = sparse([1, 1, 1, 2, 2], [1, 2, 3, 1, 3], [1.0, 1.25, 0.25, 1.0, 1.0], 2, 3)
+    J = similar(optprob.cons_jac_prototype, Float64)
+    optprob.cons_j(J, x0)
+    @test J ≈ J_expected
+    @test nnz(J) == 5  # Check sparsity
+    
+    # Test constraint Hessians
+    H_cons_expected = [sparse([2, 2, 3, 3], [2, 3, 2, 3], [0.5, 1.0, 1.0, 0.5], 3, 3), sparse([1, 3], [1, 3], [2.0, 2.0], 3, 3)]
+    H_cons = [similar(h, Float64) for h in optprob.cons_hess_prototype]
+    optprob.cons_h(H_cons, x0)
+    @test all(H_cons .≈ H_cons_expected)
+    @test all(nnz.(H_cons) .== [4, 2])  # Check sparsity
+
+    lag_H_expected = sparse([1, 2, 3, 2, 3], [1, 2, 2, 3, 3], [6.0, 100.5, -199.0, -199.0, 204.5], 3, 3)
+    σ = 1.0
+    λ = [1.0, 2.0]
+    lag_H = similar(optprob.lag_hess_prototype, Float64)
+    optprob.lag_h(lag_H, x0, σ, λ)
+    @test lag_H ≈ lag_H_expected
+    @test nnz(lag_H) == 5
+
+    optf = OptimizationFunction(sparse_objective, OptimizationBase.AutoSparseReverseDiff(),
+            cons = sparse_constraints)
+
+    # Instantiate the optimization problem
+    optprob = OptimizationBase.instantiate_function(optf, x0,
+    OptimizationBase.AutoSparseForwardDiff(),
+    nothing, 2, g = true, h = true, cons_j = true, cons_h = true, lag_h = true)
+    # Test gradient
+    G = zeros(3)
+    optprob.grad(G, x0)
+    @test G ≈ [1.0, -50.0, 50.0]
+    
+    # Test Hessian
+    H_expected = sparse([1, 2, 2, 3, 3], [1, 2, 3, 2, 3], [2.0, 100.0, -200.0, -200.0, 200.0], 3, 3)
+    H = similar(optprob.hess_prototype, Float64)
+    optprob.hess(H, x0)
+    @test H ≈ H_expected
+    @test nnz(H) == 5  # Check sparsity
+    
+    # Test constraints
+    res = zeros(2)
+    optprob.cons(res, x0)
+    @test res ≈ [0.0625, -0.5]
+    
+    # Test constraint Jacobian
+    J_expected = sparse([1, 1, 1, 2, 2], [1, 2, 3, 1, 3], [1.0, 1.25, 0.25, 1.0, 1.0], 2, 3)
+    J = similar(optprob.cons_jac_prototype, Float64)
+    optprob.cons_j(J, x0)
+    @test J ≈ J_expected
+    @test nnz(J) == 5  # Check sparsity
+    
+    # Test constraint Hessians
+    H_cons_expected = [sparse([2, 2, 3, 3], [2, 3, 2, 3], [0.5, 1.0, 1.0, 0.5], 3, 3), sparse([1, 3], [1, 3], [2.0, 2.0], 3, 3)]
+    H_cons = [similar(h, Float64) for h in optprob.cons_hess_prototype]
+    optprob.cons_h(H_cons, x0)
+    @test all(H_cons .≈ H_cons_expected)
+    @test all(nnz.(H_cons) .== [4, 2])  # Check sparsity
+
+    lag_H_expected = sparse([1, 2, 3, 2, 3], [1, 2, 2, 3, 3], [6.0, 100.5, -199.0, -199.0, 204.5], 3, 3)
+    σ = 1.0
+    λ = [1.0, 2.0]
+    lag_H = similar(optprob.lag_hess_prototype, Float64)
+    optprob.lag_h(lag_H, x0, σ, λ)
+    @test lag_H ≈ lag_H_expected
+    @test nnz(lag_H) == 5
+
+    optf = OptimizationFunction(sparse_objective, OptimizationBase.AutoSparseReverseDiff(true),
+            cons = sparse_constraints)
+
+    # Instantiate the optimization problem
+    optprob = OptimizationBase.instantiate_function(optf, x0,
+    OptimizationBase.AutoSparseForwardDiff(),
+    nothing, 2, g = true, h = true, cons_j = true, cons_h = true, lag_h = true)
+    # Test gradient
+    G = zeros(3)
+    optprob.grad(G, x0)
+    @test G ≈ [1.0, -50.0, 50.0]
+    
+    # Test Hessian
+    H_expected = sparse([1, 2, 2, 3, 3], [1, 2, 3, 2, 3], [2.0, 100.0, -200.0, -200.0, 200.0], 3, 3)
+    H = similar(optprob.hess_prototype, Float64)
+    optprob.hess(H, x0)
+    @test H ≈ H_expected
+    @test nnz(H) == 5  # Check sparsity
+    
+    # Test constraints
+    res = zeros(2)
+    optprob.cons(res, x0)
+    @test res ≈ [0.0625, -0.5]
+    
+    # Test constraint Jacobian
+    J_expected = sparse([1, 1, 1, 2, 2], [1, 2, 3, 1, 3], [1.0, 1.25, 0.25, 1.0, 1.0], 2, 3)
+    J = similar(optprob.cons_jac_prototype, Float64)
+    optprob.cons_j(J, x0)
+    @test J ≈ J_expected
+    @test nnz(J) == 5  # Check sparsity
+    
+    # Test constraint Hessians
+    H_cons_expected = [sparse([2, 2, 3, 3], [2, 3, 2, 3], [0.5, 1.0, 1.0, 0.5], 3, 3), sparse([1, 3], [1, 3], [2.0, 2.0], 3, 3)]
+    H_cons = [similar(h, Float64) for h in optprob.cons_hess_prototype]
+    optprob.cons_h(H_cons, x0)
+    @test all(H_cons .≈ H_cons_expected)
+    @test all(nnz.(H_cons) .== [4, 2])  # Check sparsity
+
+    lag_H_expected = sparse([1, 2, 3, 2, 3], [1, 2, 2, 3, 3], [6.0, 100.5, -199.0, -199.0, 204.5], 3, 3)
+    σ = 1.0
+    λ = [1.0, 2.0]
+    lag_H = similar(optprob.lag_hess_prototype, Float64)
+    optprob.lag_h(lag_H, x0, σ, λ)
+    @test lag_H ≈ lag_H_expected
+    @test nnz(lag_H) == 5
+
+    optf = OptimizationFunction(sparse_objective, OptimizationBase.AutoSparseFiniteDiff(),
+            cons = sparse_constraints)
+
+    # Instantiate the optimization problem
+    optprob = OptimizationBase.instantiate_function(optf, x0,
+    OptimizationBase.AutoSparseForwardDiff(),
+    nothing, 2, g = true, h = true, cons_j = true, cons_h = true, lag_h = true)
+    # Test gradient
+    G = zeros(3)
+    optprob.grad(G, x0)
+    @test G ≈ [1.0, -50.0, 50.0]
+    
+    # Test Hessian
+    H_expected = sparse([1, 2, 2, 3, 3], [1, 2, 3, 2, 3], [2.0, 100.0, -200.0, -200.0, 200.0], 3, 3)
+    H = similar(optprob.hess_prototype, Float64)
+    optprob.hess(H, x0)
+    @test H ≈ H_expected
+    @test nnz(H) == 5  # Check sparsity
+    
+    # Test constraints
+    res = zeros(2)
+    optprob.cons(res, x0)
+    @test res ≈ [0.0625, -0.5]
+    
+    # Test constraint Jacobian
+    J_expected = sparse([1, 1, 1, 2, 2], [1, 2, 3, 1, 3], [1.0, 1.25, 0.25, 1.0, 1.0], 2, 3)
+    J = similar(optprob.cons_jac_prototype, Float64)
+    optprob.cons_j(J, x0)
+    @test J ≈ J_expected
+    @test nnz(J) == 5  # Check sparsity
+    
+    # Test constraint Hessians
+    H_cons_expected = [sparse([2, 2, 3, 3], [2, 3, 2, 3], [0.5, 1.0, 1.0, 0.5], 3, 3), sparse([1, 3], [1, 3], [2.0, 2.0], 3, 3)]
+    H_cons = [similar(h, Float64) for h in optprob.cons_hess_prototype]
+    optprob.cons_h(H_cons, x0)
+    @test all(H_cons .≈ H_cons_expected)
+    @test all(nnz.(H_cons) .== [4, 2])  # Check sparsity
+
+    lag_H_expected = sparse([1, 2, 3, 2, 3], [1, 2, 2, 3, 3], [6.0, 100.5, -199.0, -199.0, 204.5], 3, 3)
+    σ = 1.0
+    λ = [1.0, 2.0]
+    lag_H = similar(optprob.lag_hess_prototype, Float64)
+    optprob.lag_h(lag_H, x0, σ, λ)
+    @test lag_H ≈ lag_H_expected
+    @test nnz(lag_H) == 5
+
+    optf = OptimizationFunction(sparse_objective, OptimizationBase.AutoSparseZygote(),
+            cons = sparse_constraints)
+
+    # Instantiate the optimization problem
+    optprob = OptimizationBase.instantiate_function(optf, x0,
+    OptimizationBase.AutoSparseForwardDiff(),
+    nothing, 2, g = true, h = true, cons_j = true, cons_h = true, lag_h = true)
+    # Test gradient
+    G = zeros(3)
+    optprob.grad(G, x0)
+    @test G ≈ [1.0, -50.0, 50.0]
+    
+    # Test Hessian
+    H_expected = sparse([1, 2, 2, 3, 3], [1, 2, 3, 2, 3], [2.0, 100.0, -200.0, -200.0, 200.0], 3, 3)
+    H = similar(optprob.hess_prototype, Float64)
+    optprob.hess(H, x0)
+    @test H ≈ H_expected
+    @test nnz(H) == 5  # Check sparsity
+    
+    # Test constraints
+    res = zeros(2)
+    optprob.cons(res, x0)
+    @test res ≈ [0.0625, -0.5]
+    
+    # Test constraint Jacobian
+    J_expected = sparse([1, 1, 1, 2, 2], [1, 2, 3, 1, 3], [1.0, 1.25, 0.25, 1.0, 1.0], 2, 3)
+    J = similar(optprob.cons_jac_prototype, Float64)
+    optprob.cons_j(J, x0)
+    @test J ≈ J_expected
+    @test nnz(J) == 5  # Check sparsity
+    
+    # Test constraint Hessians
+    H_cons_expected = [sparse([2, 2, 3, 3], [2, 3, 2, 3], [0.5, 1.0, 1.0, 0.5], 3, 3), sparse([1, 3], [1, 3], [2.0, 2.0], 3, 3)]
+    H_cons = [similar(h, Float64) for h in optprob.cons_hess_prototype]
+    optprob.cons_h(H_cons, x0)
+    @test all(H_cons .≈ H_cons_expected)
+    @test all(nnz.(H_cons) .== [4, 2])  # Check sparsity
+
+    lag_H_expected = sparse([1, 2, 3, 2, 3], [1, 2, 2, 3, 3], [6.0, 100.5, -199.0, -199.0, 204.5], 3, 3)
+    σ = 1.0
+    λ = [1.0, 2.0]
+    lag_H = similar(optprob.lag_hess_prototype, Float64)
+    optprob.lag_h(lag_H, x0, σ, λ)
+    @test lag_H ≈ lag_H_expected
+    @test nnz(lag_H) == 5
 end
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoFiniteDiff(), cons = con2_c)
-optprob = OptimizationBase.instantiate_function(
-    optf, x0, OptimizationBase.AutoFiniteDiff(),
-    nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
-optprob.grad(G2, x0)
-@test G1≈G2 rtol=1e-6
-optprob.hess(H2, x0)
-@test H1≈H2 rtol=1e-6
-res = Array{Float64}(undef, 2)
-optprob.cons(res, x0)
-@test res == [0.0, 0.0]
-optprob.cons(res, [1.0, 2.0])
-@test res ≈ [5.0, 0.682941969615793]
-J = Array{Float64}(undef, 2, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
-H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
-optprob.cons_h(H3, x0)
-@test H3 ≈ [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
-
-cons_jac_proto = Float64.(sparse([1 1; 1 1]))
-cons_jac_colors = 1:2
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoFiniteDiff(), cons = con2_c,
-    cons_jac_prototype = cons_jac_proto,
-    cons_jac_colorvec = cons_jac_colors)
-optprob = OptimizationBase.instantiate_function(
-    optf, x0, OptimizationBase.AutoFiniteDiff(),
-    nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
-@test optprob.cons_jac_prototype == sparse([1.0 1.0; 1.0 1.0]) # make sure it's still using it
-@test optprob.cons_jac_colorvec == 1:2
-J = Array{Float64}(undef, 2, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test all(isapprox(J, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
-H2 = Array{Float64}(undef, 2, 2)
-optprob.hess(H2, [5.0, 3.0])
-@test all(isapprox(H2, [28802.0 -2000.0; -2000.0 200.0]; rtol = 1e-3))
-
-cons_j = (J, θ, p) -> optprob.cons_j(J, θ)
-hess = (H, θ, p) -> optprob.hess(H, θ)
-sH = sparse([1, 1, 2, 2], [1, 2, 1, 2], zeros(4))
-sJ = sparse([1, 1, 2, 2], [1, 2, 1, 2], zeros(4))
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoForwardDiff(), hess = hess,
-    hess_prototype = copy(sH), cons = con2_c, cons_j = cons_j,
-    cons_jac_prototype = copy(sJ))
-optprob1 = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoForwardDiff(),
-    nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
-@test optprob1.hess_prototype == sparse([0.0 0.0; 0.0 0.0]) # make sure it's still using it
-optprob1.hess(sH, [5.0, 3.0])
-@test all(isapprox(sH, [28802.0 -2000.0; -2000.0 200.0]; rtol = 1e-3))
-@test optprob1.cons_jac_prototype == sparse([0.0 0.0; 0.0 0.0]) # make sure it's still using it
-optprob1.cons_j(sJ, [5.0, 3.0])
-@test all(isapprox(sJ, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
-
-grad = (G, θ, p) -> optprob.grad(G, θ)
-hess = (H, θ, p) -> optprob.hess(H, θ)
-cons_j = (J, θ, p) -> optprob.cons_j(J, θ)
-cons_h = (res, θ, p) -> optprob.cons_h(res, θ)
-sH = sparse([1, 1, 2, 2], [1, 2, 1, 2], zeros(4))
-sJ = sparse([1, 1, 2, 2], [1, 2, 1, 2], zeros(4))
-sH3 = [sparse([1, 2], [1, 2], zeros(2)), sparse([1, 1, 2], [1, 2, 1], zeros(3))]
-optf = OptimizationFunction(rosenbrock, SciMLBase.NoAD(), grad = grad, hess = hess,
-    cons = con2_c, cons_j = cons_j, cons_h = cons_h,
-    hess_prototype = sH, cons_jac_prototype = sJ,
-    cons_hess_prototype = sH3)
-optprob2 = OptimizationBase.instantiate_function(
-    optf, x0, SciMLBase.NoAD(), nothing, 2, g = true,
-    h = true, cons_j = true, cons_h = true)
-optprob2.hess(sH, [5.0, 3.0])
-@test all(isapprox(sH, [28802.0 -2000.0; -2000.0 200.0]; rtol = 1e-3))
-optprob2.cons_j(sJ, [5.0, 3.0])
-@test all(isapprox(sJ, [10.0 6.0; -0.149013 -0.958924]; rtol = 1e-3))
-optprob2.cons_h(sH3, [5.0, 3.0])
-@test Array.(sH3)≈[
-    [2.0 0.0; 0.0 2.0],
-    [2.8767727327346804 0.2836621681849162; 0.2836621681849162 -6.622738308376736e-9]
-] rtol=1e-4
-
-optf = OptimizationFunction(rosenbrock,
-    OptimizationBase.AutoSparseFiniteDiff(),
-    cons = con2_c)
-optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoSparseFiniteDiff(),
-    nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
-G2 = Array{Float64}(undef, 2)
-optprob.grad(G2, x0)
-@test G1≈G2 rtol=1e-4
-H2 = Array{Float64}(undef, 2, 2)
-optprob.hess(H2, x0)
-@test H1≈H2 rtol=1e-4
-res = Array{Float64}(undef, 2)
-optprob.cons(res, x0)
-@test res≈[0.0, 0.0] atol=1e-4
-optprob.cons(res, [1.0, 2.0])
-@test res ≈ [5.0, 0.682941969615793]
-J = Array{Float64}(undef, 2, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test J≈[10.0 6.0; -0.149013 -0.958924] rtol=1e-3
-H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
-optprob.cons_h(H3, x0)
-@test H3 ≈ [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
-
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoSparseFiniteDiff())
-optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoSparseFiniteDiff(),
-    nothing, g = true, h = true, cons_j = true, cons_h = true)
-optprob.grad(G2, x0)
-@test G1≈G2 rtol=1e-6
-optprob.hess(H2, x0)
-@test H1≈H2 rtol=1e-4
-
-optf = OptimizationFunction(rosenbrock,
-    OptimizationBase.AutoSparseForwardDiff(),
-    cons = con2_c)
-optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoSparseForwardDiff(),
-    nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
-G2 = Array{Float64}(undef, 2)
-optprob.grad(G2, x0)
-@test G1≈G2 rtol=1e-4
-H2 = Array{Float64}(undef, 2, 2)
-optprob.hess(H2, x0)
-@test H1≈H2 rtol=1e-4
-res = Array{Float64}(undef, 2)
-optprob.cons(res, x0)
-@test res≈[0.0, 0.0] atol=1e-4
-optprob.cons(res, [1.0, 2.0])
-@test res ≈ [5.0, 0.682941969615793]
-J = Array{Float64}(undef, 2, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test J≈[10.0 6.0; -0.149013 -0.958924] rtol=1e-3
-H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
-optprob.cons_h(H3, x0)
-@test H3 ≈ [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
-
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoSparseForwardDiff())
-optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoSparseForwardDiff(),
-    nothing, g = true, h = true)
-optprob.grad(G2, x0)
-@test G1≈G2 rtol=1e-6
-optprob.hess(H2, x0)
-@test H1≈H2 rtol=1e-6
-
-optf = OptimizationFunction(rosenbrock,
-    OptimizationBase.AutoSparseReverseDiff(),
-    cons = con2_c)
-optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoSparseReverseDiff(true),
-    nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
-G2 = Array{Float64}(undef, 2)
-optprob.grad(G2, x0)
-@test G1≈G2 rtol=1e-4
-H2 = Array{Float64}(undef, 2, 2)
-optprob.hess(H2, x0)
-@test H1≈H2 rtol=1e-4
-res = Array{Float64}(undef, 2)
-optprob.cons(res, x0)
-@test res≈[0.0, 0.0] atol=1e-4
-optprob.cons(res, [1.0, 2.0])
-@test res ≈ [5.0, 0.682941969615793]
-J = Array{Float64}(undef, 2, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test J≈[10.0 6.0; -0.149013 -0.958924] rtol=1e-3
-H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
-optprob.cons_h(H3, x0)
-@test H3 ≈ [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
-
-optf = OptimizationFunction(rosenbrock,
-    OptimizationBase.AutoSparseReverseDiff(),
-    cons = con2_c)
-optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoSparseReverseDiff(),
-    nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
-G2 = Array{Float64}(undef, 2)
-optprob.grad(G2, x0)
-@test G1≈G2 rtol=1e-4
-H2 = Array{Float64}(undef, 2, 2)
-optprob.hess(H2, x0)
-@test H1≈H2 rtol=1e-4
-res = Array{Float64}(undef, 2)
-optprob.cons(res, x0)
-@test res≈[0.0, 0.0] atol=1e-4
-optprob.cons(res, [1.0, 2.0])
-@test res ≈ [5.0, 0.682941969615793]
-J = Array{Float64}(undef, 2, 2)
-optprob.cons_j(J, [5.0, 3.0])
-@test J≈[10.0 6.0; -0.149013 -0.958924] rtol=1e-3
-H3 = [Array{Float64}(undef, 2, 2), Array{Float64}(undef, 2, 2)]
-optprob.cons_h(H3, x0)
-@test H3 ≈ [[2.0 0.0; 0.0 2.0], [-0.0 1.0; 1.0 0.0]]
-
-optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoSparseReverseDiff())
-optprob = OptimizationBase.instantiate_function(optf, x0,
-    OptimizationBase.AutoSparseReverseDiff(),
-    nothing, g = true, h = true)
-optprob.grad(G2, x0)
-@test G1≈G2 rtol=1e-6
-optprob.hess(H2, x0)
-@test H1≈H2 rtol=1e-6
 
 @testset "OOP" begin
     cons = (x, p) -> [x[1]^2 + x[2]^2]

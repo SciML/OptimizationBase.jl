@@ -209,12 +209,10 @@ function instantiate_function(
         end
 
         function lag_h!(h::AbstractVector, θ, σ, λ)
-            H = eltype(θ).(lag_hess_prototype)
-            hessian!(x -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
+            H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)
             k = 0
-            rows, cols, _ = findnz(H)
-            for (i, j) in zip(rows, cols)
-                if i <= j
+            for i in 1:length(θ)
+                for j in 1:i
                     k += 1
                     h[k] = H[i, j]
                 end
@@ -356,8 +354,11 @@ function instantiate_function(
             return f.cons(θ, p)
         end
 
-        function lagrangian(x, σ = one(eltype(x)), λ = ones(eltype(x), num_cons))
-            return σ * _f(x) + dot(λ, cons(x))
+        function lagrangian(augvars)
+            θ = augvars[1:length(x)]
+            σ = augvars[length(x)+1]
+            λ = augvars[length(x)+2:end]
+            return σ * _f(θ) + dot(λ, cons(θ))
         end
     end
 
@@ -421,18 +422,14 @@ function instantiate_function(
     lag_hess_prototype = f.lag_hess_prototype
 
     if cons !== nothing && lag_h == true && f.lag_h === nothing
-        lag_extras = prepare_hessian(lagrangian, soadtype, x)
+        lag_extras = prepare_hessian(lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
         lag_hess_prototype = zeros(Bool, length(x), length(x))
 
         function lag_h!(θ, σ, λ)
             if σ == zero(eltype(θ))
-                H = cons_h(θ)
-                for i in 1:num_cons
-                    H[i] *= λ[i]
-                end
-                return H
+                return λ .*cons_h(θ)
             else
-                return hessian(x -> lagrangian(x, σ, λ), soadtype, θ, lag_extras)
+                return hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[1:length(θ), 1:length(θ)]
             end
         end
     elseif lag_h == true && cons !== nothing
