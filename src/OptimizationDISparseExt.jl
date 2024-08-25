@@ -211,8 +211,8 @@ function instantiate_function(
 
         function lagrangian(augvars)
             θ = augvars[1:length(x)]
-            σ = augvars[length(x)+1]
-            λ = augvars[length(x)+2:end]
+            σ = augvars[length(x) + 1]
+            λ = augvars[(length(x) + 2):end]
             return σ * _f(θ) + dot(λ, cons_oop(θ))
         end
     end
@@ -282,7 +282,8 @@ function instantiate_function(
     lag_hess_prototype = f.lag_hess_prototype
     lag_hess_colors = f.lag_hess_colorvec
     if cons !== nothing && lag_h == true && f.lag_h === nothing
-        lag_extras = prepare_hessian(lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
+        lag_extras = prepare_hessian(
+            lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
         lag_hess_prototype = lag_extras.coloring_result.S[1:length(x), 1:length(x)]
         lag_hess_colors = lag_extras.coloring_result.color
 
@@ -291,12 +292,14 @@ function instantiate_function(
                 cons_h(H, θ)
                 H *= λ
             else
-                H .= hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[1:length(θ), 1:length(θ)]
+                H .= hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
+                    1:length(θ), 1:length(θ)]
             end
         end
 
         function lag_h!(h, θ, σ, λ)
-            H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[1:length(θ), 1:length(θ)]
+            H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
+                1:length(θ), 1:length(θ)]
             k = 0
             rows, cols, _ = findnz(H)
             for (i, j) in zip(rows, cols)
@@ -440,8 +443,8 @@ function instantiate_function(
 
         function lagrangian(augvars)
             θ = augvars[1:length(x)]
-            σ = augvars[length(x)+1]
-            λ = augvars[length(x)+2:end]
+            σ = augvars[length(x) + 1]
+            λ = augvars[(length(x) + 2):end]
             return σ * _f(θ) + dot(λ, cons(θ))
         end
     end
@@ -511,12 +514,14 @@ function instantiate_function(
     lag_hess_prototype = f.lag_hess_prototype
     lag_hess_colors = f.lag_hess_colorvec
     if cons !== nothing && lag_h == true && f.lag_h === nothing
-        lag_extras = prepare_hessian(lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
+        lag_extras = prepare_hessian(
+            lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
         function lag_h!(θ, σ, λ)
             if σ == zero(eltype(θ))
                 return λ .* cons_h!(θ)
             else
-                hess = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[1:length(θ), 1:length(θ)]
+                hess = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
+                    1:length(θ), 1:length(θ)]
                 return hess
             end
         end
