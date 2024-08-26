@@ -8,7 +8,7 @@ import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp,
                                  value_derivative_and_second_derivative!,
                                  value_and_gradient, value_derivative_and_second_derivative,
                                  gradient!, hessian!, hvp!, jacobian!, gradient, hessian,
-                                 hvp, jacobian
+                                 hvp, jacobian, prepare_pullback
 using ADTypes
 using SparseConnectivityTracer, SparseMatrixColorings
 
@@ -233,12 +233,13 @@ function instantiate_function(
     end
 
     if f.cons_vjp === nothing && cons_vjp == true
-        extras_pullback = prepare_pullback(cons_oop, adtype, x)
-        function cons_vjp!(J, θ, v)
+        dy = similar(x)
+        extras_pullback = prepare_pullback(cons_oop, adtype, x, dy)
+        function cons_vjp!(J, v, θ)
             pullback!(cons_oop, J, adtype.dense_ad, θ, v, extras_pullback)
         end
     elseif cons_vjp === true && cons !== nothing
-        cons_vjp! = (J, θ, v) -> f.cons_vjp(J, θ, v, p)
+        cons_vjp! = (J, v, θ) -> f.cons_vjp(J, v, θ, p)
     else
         cons_vjp! = nothing
     end
@@ -249,7 +250,7 @@ function instantiate_function(
             pushforward!(cons_oop, J, adtype.dense_ad, θ, v, extras_pushforward)
         end
     elseif cons_jvp === true && cons !== nothing
-        cons_jvp! = (J, θ, v) -> f.cons_jvp(J, θ, v, p)
+        cons_jvp! = (J, v, θ) -> f.cons_jvp(J, v, θ, p)
     else
         cons_jvp! = nothing
     end
