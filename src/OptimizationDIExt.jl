@@ -384,7 +384,7 @@ function instantiate_function(
     end
 
     if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
-        extras_pullback = prepare_pullback(cons, adtype, x)
+        extras_pullback = prepare_pullback(cons, adtype, x, ones(eltype(x), num_cons))
         function cons_vjp!(θ, v)
             return pullback(cons, adtype, θ, v, extras_pullback)
         end
@@ -395,7 +395,8 @@ function instantiate_function(
     end
 
     if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
-        extras_pushforward = prepare_pushforward(cons, adtype, x)
+        extras_pushforward = prepare_pushforward(
+            cons, adtype, x, ones(eltype(x), length(x)))
         function cons_jvp!(θ, v)
             return pushforward(cons, adtype, θ, v, extras_pushforward)
         end
