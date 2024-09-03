@@ -4,6 +4,9 @@ import OptimizationBase.SciMLBase: OptimizationFunction
 import OptimizationBase.LinearAlgebra: I
 import DifferentiationInterface
 import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp,
+                                 prepare_pullback, prepare_pushforward, pullback!,
+                                 pushforward!,
+                                 pullback, pushforward,
                                  prepare_jacobian, value_and_gradient!, value_and_gradient,
                                  value_derivative_and_second_derivative!,
                                  value_derivative_and_second_derivative,
@@ -86,8 +89,17 @@ function instantiate_function(
         function hess(res, θ)
             hessian!(_f, res, soadtype, θ, extras_hess)
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function hess(res, θ, p)
+                global _p = p
+                hessian!(_f, res, soadtype, θ)
+            end
+        end
     elseif h == true
         hess = (H, θ) -> f.hess(H, θ, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            hess = (H, θ, p) -> f.hess(H, θ, p)
+        end
     else
         hess = nothing
     end
@@ -98,8 +110,19 @@ function instantiate_function(
                 _f, G, H, soadtype, θ, extras_hess)
             return y
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function fgh!(G, H, θ, p)
+                global _p = p
+                (y, _, _) = value_derivative_and_second_derivative!(
+                    _f, G, H, soadtype, θ)
+                return y
+            end
+        end
     elseif fgh == true
         fgh! = (G, H, θ) -> f.fgh(G, H, θ, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            fgh! = (G, H, θ, p) -> f.fgh(G, H, θ, p)
+        end
     else
         fgh! = nothing
     end
@@ -109,8 +132,17 @@ function instantiate_function(
         function hv!(H, θ, v)
             hvp!(_f, H, soadtype, θ, v, extras_hvp)
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function hv!(H, θ, v, p)
+                global _p = p
+                hvp!(_f, H, soadtype, θ, v)
+            end
+        end
     elseif hv == true
         hv! = (H, θ, v) -> f.hv(H, θ, v, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            hv! = (H, θ, v, p) -> f.hv(H, θ, v, p)
+        end
     else
         hv! = nothing
     end
@@ -128,8 +160,11 @@ function instantiate_function(
             return _res
         end
 
-        function lagrangian(x, σ = one(eltype(x)), λ = ones(eltype(x), num_cons))
-            return σ * _f(x) + dot(λ, cons_oop(x))
+        function lagrangian(augvars)
+            θ = augvars[1:length(x)]
+            σ = augvars[length(x) + 1]
+            λ = augvars[(length(x) + 2):end]
+            return σ * _f(θ) + dot(λ, cons_oop(θ))
         end
     end
 
@@ -150,7 +185,7 @@ function instantiate_function(
     end
 
     if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
-        extras_pullback = prepare_pullback(cons_oop, adtype, x)
+        extras_pullback = prepare_pullback(cons_oop, adtype, x, ones(eltype(x), num_cons))
         function cons_vjp!(J, θ, v)
             pullback!(cons_oop, J, adtype, θ, v, extras_pullback)
         end
@@ -161,7 +196,8 @@ function instantiate_function(
     end
 
     if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
-        extras_pushforward = prepare_pushforward(cons_oop, adtype, x)
+        extras_pushforward = prepare_pushforward(
+            cons_oop, adtype, x, ones(eltype(x), length(x)))
         function cons_jvp!(J, θ, v)
             pushforward!(cons_oop, J, adtype, θ, v, extras_pushforward)
         end
@@ -191,7 +227,8 @@ function instantiate_function(
     lag_hess_prototype = f.lag_hess_prototype
 
     if cons !== nothing && lag_h == true && f.lag_h === nothing
-        lag_extras = prepare_hessian(lagrangian, soadtype, x)
+        lag_extras = prepare_hessian(
+            lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
         lag_hess_prototype = zeros(Bool, length(x), length(x))
 
         function lag_h!(H::AbstractMatrix, θ, σ, λ)
@@ -199,19 +236,43 @@ function instantiate_function(
                 cons_h(H, θ)
                 H *= λ
             else
-                hessian!(x -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
+                H .= @view(hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
+                    1:length(θ), 1:length(θ)])
             end
         end
 
-        function lag_h!(h, θ, σ, λ)
-            H = eltype(θ).(lag_hess_prototype)
-            hessian!(x -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
+        function lag_h!(h::AbstractVector, θ, σ, λ)
+            H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)
             k = 0
-            rows, cols, _ = findnz(H)
-            for (i, j) in zip(rows, cols)
-                if i <= j
+            for i in 1:length(θ)
+                for j in 1:i
                     k += 1
                     h[k] = H[i, j]
+                end
+            end
+        end
+
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function lag_h!(H::AbstractMatrix, θ, σ, λ, p)
+                if σ == zero(eltype(θ))
+                    cons_h(H, θ)
+                    H *= λ
+                else
+                    global _p = p
+                    H .= @view(hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
+                        1:length(θ), 1:length(θ)])
+                end
+            end
+    
+            function lag_h!(h::AbstractVector, θ, σ, λ, p)
+                global _p = p
+                H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)
+                k = 0
+                for i in 1:length(θ)
+                    for j in 1:i
+                        k += 1
+                        h[k] = H[i, j]
+                    end
                 end
             end
         end
@@ -316,8 +377,17 @@ function instantiate_function(
         function hess(θ)
             hessian(_f, soadtype, θ, extras_hess)
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function hess(θ, p)
+                global _p = p
+                hessian(_f, soadtype, θ)
+            end
+        end
     elseif h == true
         hess = (θ) -> f.hess(θ, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            hess = (θ, p) -> f.hess(θ, p)
+        end
     else
         hess = nothing
     end
@@ -327,8 +397,18 @@ function instantiate_function(
             (y, G, H) = value_derivative_and_second_derivative(_f, adtype, θ, extras_hess)
             return y, G, H
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function fgh!(θ, p)
+                global _p = p
+                (y, G, H) = value_derivative_and_second_derivative(_f, adtype, θ)
+                return y, G, H
+            end
+        end
     elseif fgh == true
         fgh! = (θ) -> f.fgh(θ, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            fgh! = (θ, p) -> f.fgh(θ, p)
+        end
     else
         fgh! = nothing
     end
@@ -338,8 +418,17 @@ function instantiate_function(
         function hv!(θ, v)
             hvp(_f, soadtype, θ, v, extras_hvp)
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function hv!(θ, v, p)
+                global _p = p
+                hvp(_f, soadtype, θ, v, extras_hvp)
+            end
+        end
     elseif hv == true
         hv! = (θ, v) -> f.hv(θ, v, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            hv! = (θ, v, p) -> f.hv(θ, v, p)
+        end
     else
         hv! = nothing
     end
@@ -351,8 +440,11 @@ function instantiate_function(
             return f.cons(θ, p)
         end
 
-        function lagrangian(x, σ = one(eltype(x)), λ = ones(eltype(x), num_cons))
-            return σ * _f(x) + dot(λ, cons(x))
+        function lagrangian(augvars)
+            θ = augvars[1:length(x)]
+            σ = augvars[length(x) + 1]
+            λ = augvars[(length(x) + 2):end]
+            return σ * _f(θ) + dot(λ, cons(θ))
         end
     end
 
@@ -374,7 +466,7 @@ function instantiate_function(
     end
 
     if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
-        extras_pullback = prepare_pullback(cons, adtype, x)
+        extras_pullback = prepare_pullback(cons, adtype, x, ones(eltype(x), num_cons))
         function cons_vjp!(θ, v)
             return pullback(cons, adtype, θ, v, extras_pullback)
         end
@@ -385,7 +477,8 @@ function instantiate_function(
     end
 
     if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
-        extras_pushforward = prepare_pushforward(cons, adtype, x)
+        extras_pushforward = prepare_pushforward(
+            cons, adtype, x, ones(eltype(x), length(x)))
         function cons_jvp!(θ, v)
             return pushforward(cons, adtype, θ, v, extras_pushforward)
         end
@@ -416,18 +509,28 @@ function instantiate_function(
     lag_hess_prototype = f.lag_hess_prototype
 
     if cons !== nothing && lag_h == true && f.lag_h === nothing
-        lag_extras = prepare_hessian(lagrangian, soadtype, x)
+        lag_extras = prepare_hessian(
+            lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
         lag_hess_prototype = zeros(Bool, length(x), length(x))
 
         function lag_h!(θ, σ, λ)
             if σ == zero(eltype(θ))
-                H = cons_h(θ)
-                for i in 1:num_cons
-                    H[i] *= λ[i]
-                end
-                return H
+                return λ .* cons_h(θ)
             else
-                return hessian(x -> lagrangian(x, σ, λ), soadtype, θ, lag_extras)
+                return hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
+                    1:length(θ), 1:length(θ)]
+            end
+        end
+
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function lag_h!(θ, σ, λ, p)
+                if σ == zero(eltype(θ))
+                    return λ .* cons_h(θ)
+                else
+                    global _p = p
+                    return hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
+                        1:length(θ), 1:length(θ)]
+                end
             end
         end
     elseif lag_h == true && cons !== nothing
