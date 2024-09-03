@@ -43,7 +43,7 @@ function hv_f2_alloc(x, f, p)
     Enzyme.autodiff_deferred(Enzyme.Reverse,
         firstapply,
         Active,
-        f,
+        Const(f),
         Enzyme.Duplicated(x, dx),
         Const(p)
     )
@@ -105,7 +105,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
             )
         end
     elseif g == true
-        grad = (G, θ) -> f.grad(G, θ, p)
+        grad = (G, θ, p = p) -> f.grad(G, θ, p)
     else
         grad = nothing
     end
@@ -123,7 +123,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
             return y
         end
     elseif fg == true
-        fg! = (res, θ) -> f.fg(res, θ, p)
+        fg! = (res, θ, p = p) -> f.fg(res, θ, p)
     else
         fg! = nothing
     end
@@ -139,7 +139,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
             vdbθ = Tuple((copy(r) for r in eachrow(f.hess_prototype)))
         end
 
-        function hess(res, θ)
+        function hess(res, θ, p = p)
             Enzyme.make_zero!(bθ)
             Enzyme.make_zero!.(vdbθ)
 
@@ -156,13 +156,13 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
             end
         end
     elseif h == true
-        hess = (H, θ) -> f.hess(H, θ, p)
+        hess = (H, θ, p = p) -> f.hess(H, θ, p)
     else
         hess = nothing
     end
 
     if fgh == true && f.fgh === nothing
-        function fgh!(G, H, θ)
+        function fgh!(G, H, θ, p = p)
             vdθ = Tuple((Array(r) for r in eachrow(I(length(θ)) * one(eltype(θ)))))
             vdbθ = Tuple(zeros(eltype(θ), length(θ)) for i in eachindex(θ))
 
@@ -179,20 +179,20 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
             end
         end
     elseif fgh == true
-        fgh! = (G, H, θ) -> f.fgh(G, H, θ, p)
+        fgh! = (G, H, θ, p = p) -> f.fgh(G, H, θ, p)
     else
         fgh! = nothing
     end
 
     if hv == true && f.hv === nothing
-        function hv!(H, θ, v)
+        function hv!(H, θ, v, p = p)
             H .= Enzyme.autodiff(
                 Enzyme.Forward, hv_f2_alloc, DuplicatedNoNeed, Duplicated(θ, v),
-                Const(_f), Const(f.f), Const(p)
+                Const(f.f), Const(p)
             )[1]
         end
     elseif hv == true
-        hv! = (H, θ, v) -> f.hv(H, θ, v, p)
+        hv! = (H, θ, v, p = p) -> f.hv(H, θ, v, p)
     else
         hv! = nothing
     end
@@ -247,7 +247,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         cons_j! = nothing
     end
 
-    if cons !== nothing && cons_vjp == true && f.cons_vjp == true
+    if cons !== nothing && cons_vjp == true && f.cons_vjp === nothing
         cons_res = zeros(eltype(x), num_cons)
         function cons_vjp!(res, θ, v)
             Enzyme.make_zero!(res)
@@ -267,7 +267,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         cons_vjp! = nothing
     end
 
-    if cons !== nothing && cons_jvp == true && f.cons_jvp == true
+    if cons !== nothing && cons_jvp == true && f.cons_jvp === nothing
         cons_res = zeros(eltype(x), num_cons)
 
         function cons_jvp!(res, θ, v)
@@ -327,7 +327,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
             lag_vdbθ = Tuple((copy(r) for r in eachrow(f.hess_prototype)))
         end
 
-        function lag_h!(h, θ, σ, μ)
+        function lag_h!(h, θ, σ, μ, p = p)
             Enzyme.make_zero!(lag_bθ)
             Enzyme.make_zero!.(lag_vdbθ)
 
@@ -350,8 +350,30 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
                 k += i
             end
         end
+
+        function lag_h!(H::AbstractMatrix, θ, σ, μ, p = p)
+            Enzyme.make_zero!(H)
+            Enzyme.make_zero!(lag_bθ)
+            Enzyme.make_zero!.(lag_vdbθ)
+
+            Enzyme.autodiff(Enzyme.Forward,
+                lag_grad,
+                Enzyme.BatchDuplicated(θ, lag_vdθ),
+                Enzyme.BatchDuplicatedNoNeed(lag_bθ, lag_vdbθ),
+                Const(lagrangian),
+                Const(f.f),
+                Const(f.cons),
+                Const(p),
+                Const(σ),
+                Const(μ)
+            )
+
+            for i in eachindex(θ)
+                H[i, :] .= lag_vdbθ[i]
+            end
+        end
     elseif lag_h == true && cons !== nothing
-        lag_h! = (θ, σ, μ) -> f.lag_h(θ, σ, μ, p)
+        lag_h! = (θ, σ, μ, p = p) -> f.lag_h(θ, σ, μ, p)
     else
         lag_h! = nothing
     end
@@ -389,7 +411,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         lag_h = false)
     if g == true && f.grad === nothing
         res = zeros(eltype(x), size(x))
-        function grad(θ)
+        function grad(θ, p = p)
             Enzyme.make_zero!(res)
             Enzyme.autodiff(Enzyme.Reverse,
                 Const(firstapply),
@@ -401,14 +423,14 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             return res
         end
     elseif fg == true
-        grad = (θ) -> f.grad(θ, p)
+        grad = (θ, p = p) -> f.grad(θ, p)
     else
         grad = nothing
     end
 
     if fg == true && f.fg === nothing
         res_fg = zeros(eltype(x), size(x))
-        function fg!(θ)
+        function fg!(θ, p = p)
             Enzyme.make_zero!(res_fg)
             y = Enzyme.autodiff(Enzyme.ReverseWithPrimal,
                 Const(firstapply),
@@ -420,7 +442,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             return y, res
         end
     elseif fg == true
-        fg! = (θ) -> f.fg(θ, p)
+        fg! = (θ, p = p) -> f.fg(θ, p)
     else
         fg! = nothing
     end
@@ -430,7 +452,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         bθ = zeros(eltype(x), length(x))
         vdbθ = Tuple(zeros(eltype(x), length(x)) for i in eachindex(x))
 
-        function hess(θ)
+        function hess(θ, p = p)
             Enzyme.make_zero!(bθ)
             Enzyme.make_zero!.(vdbθ)
 
@@ -446,7 +468,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
                 vcat, [reshape(vdbθ[i], (1, length(vdbθ[i]))) for i in eachindex(θ)])
         end
     elseif h == true
-        hess = (θ) -> f.hess(θ, p)
+        hess = (θ, p = p) -> f.hess(θ, p)
     else
         hess = nothing
     end
@@ -457,7 +479,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
         G_fgh = zeros(eltype(x), length(x))
         H_fgh = zeros(eltype(x), length(x), length(x))
 
-        function fgh!(θ)
+        function fgh!(θ, p = p)
             Enzyme.make_zero!(G_fgh)
             Enzyme.make_zero!(H_fgh)
             Enzyme.make_zero!.(vdbθ_fgh)
@@ -476,20 +498,20 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             return G_fgh, H_fgh
         end
     elseif fgh == true
-        fgh! = (θ) -> f.fgh(θ, p)
+        fgh! = (θ, p = p) -> f.fgh(θ, p)
     else
         fgh! = nothing
     end
 
     if hv == true && f.hv === nothing
-        function hv!(θ, v)
+        function hv!(θ, v, p = p)
             return Enzyme.autodiff(
                 Enzyme.Forward, hv_f2_alloc, DuplicatedNoNeed, Duplicated(θ, v),
                 Const(_f), Const(f.f), Const(p)
             )[1]
         end
     elseif hv == true
-        hv! = (θ, v) -> f.hv(θ, v, p)
+        hv! = (θ, v, p = p) -> f.hv(θ, v, p)
     else
         hv! = f.hv
     end
@@ -604,7 +626,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             lag_vdbθ = Tuple((copy(r) for r in eachrow(f.hess_prototype)))
         end
 
-        function lag_h!(θ, σ, μ)
+        function lag_h!(θ, σ, μ, p = p)
             Enzyme.make_zero!(lag_bθ)
             Enzyme.make_zero!.(lag_vdbθ)
 
@@ -630,7 +652,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             return res
         end
     elseif lag_h == true && cons !== nothing
-        lag_h! = (θ, σ, μ) -> f.lag_h(θ, σ, μ, p)
+        lag_h! = (θ, σ, μ, p = p) -> f.lag_h(θ, σ, μ, p)
     else
         lag_h! = nothing
     end
