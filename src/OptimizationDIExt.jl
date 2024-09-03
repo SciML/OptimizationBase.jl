@@ -89,8 +89,17 @@ function instantiate_function(
         function hess(res, θ)
             hessian!(_f, res, soadtype, θ, extras_hess)
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function hess(res, θ, p)
+                global _p = p
+                hessian!(_f, res, soadtype, θ)
+            end
+        end
     elseif h == true
         hess = (H, θ) -> f.hess(H, θ, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            hess = (H, θ, p) -> f.hess(H, θ, p)
+        end
     else
         hess = nothing
     end
@@ -101,8 +110,19 @@ function instantiate_function(
                 _f, G, H, soadtype, θ, extras_hess)
             return y
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function fgh!(G, H, θ, p)
+                global _p = p
+                (y, _, _) = value_derivative_and_second_derivative!(
+                    _f, G, H, soadtype, θ)
+                return y
+            end
+        end
     elseif fgh == true
         fgh! = (G, H, θ) -> f.fgh(G, H, θ, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            fgh! = (G, H, θ, p) -> f.fgh(G, H, θ, p)
+        end
     else
         fgh! = nothing
     end
@@ -112,8 +132,17 @@ function instantiate_function(
         function hv!(H, θ, v)
             hvp!(_f, H, soadtype, θ, v, extras_hvp)
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function hv!(H, θ, v, p)
+                global _p = p
+                hvp!(_f, H, soadtype, θ, v)
+            end
+        end
     elseif hv == true
         hv! = (H, θ, v) -> f.hv(H, θ, v, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            hv! = (H, θ, v, p) -> f.hv(H, θ, v, p)
+        end
     else
         hv! = nothing
     end
@@ -222,6 +251,31 @@ function instantiate_function(
                 end
             end
         end
+
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function lag_h!(H::AbstractMatrix, θ, σ, λ, p)
+                if σ == zero(eltype(θ))
+                    cons_h(H, θ)
+                    H *= λ
+                else
+                    global _p = p
+                    H .= @view(hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
+                        1:length(θ), 1:length(θ)])
+                end
+            end
+    
+            function lag_h!(h::AbstractVector, θ, σ, λ, p)
+                global _p = p
+                H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)
+                k = 0
+                for i in 1:length(θ)
+                    for j in 1:i
+                        k += 1
+                        h[k] = H[i, j]
+                    end
+                end
+            end
+        end
     elseif lag_h == true && cons !== nothing
         lag_h! = (res, θ, σ, μ) -> f.lag_h(res, θ, σ, μ, p)
     else
@@ -323,8 +377,17 @@ function instantiate_function(
         function hess(θ)
             hessian(_f, soadtype, θ, extras_hess)
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function hess(θ, p)
+                global _p = p
+                hessian(_f, soadtype, θ)
+            end
+        end
     elseif h == true
         hess = (θ) -> f.hess(θ, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            hess = (θ, p) -> f.hess(θ, p)
+        end
     else
         hess = nothing
     end
@@ -334,8 +397,18 @@ function instantiate_function(
             (y, G, H) = value_derivative_and_second_derivative(_f, adtype, θ, extras_hess)
             return y, G, H
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function fgh!(θ, p)
+                global _p = p
+                (y, G, H) = value_derivative_and_second_derivative(_f, adtype, θ)
+                return y, G, H
+            end
+        end
     elseif fgh == true
         fgh! = (θ) -> f.fgh(θ, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            fgh! = (θ, p) -> f.fgh(θ, p)
+        end
     else
         fgh! = nothing
     end
@@ -345,8 +418,17 @@ function instantiate_function(
         function hv!(θ, v)
             hvp(_f, soadtype, θ, v, extras_hvp)
         end
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function hv!(θ, v, p)
+                global _p = p
+                hvp(_f, soadtype, θ, v, extras_hvp)
+            end
+        end
     elseif hv == true
         hv! = (θ, v) -> f.hv(θ, v, p)
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            hv! = (θ, v, p) -> f.hv(θ, v, p)
+        end
     else
         hv! = nothing
     end
@@ -437,6 +519,18 @@ function instantiate_function(
             else
                 return hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
                     1:length(θ), 1:length(θ)]
+            end
+        end
+
+        if p !== SciMLBase.NullParameters() && p !== nothing
+            function lag_h!(θ, σ, λ, p)
+                if σ == zero(eltype(θ))
+                    return λ .* cons_h(θ)
+                else
+                    global _p = p
+                    return hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
+                        1:length(θ), 1:length(θ)]
+                end
             end
         end
     elseif lag_h == true && cons !== nothing
