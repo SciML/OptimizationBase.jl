@@ -263,7 +263,7 @@ function instantiate_function(
                         1:length(θ), 1:length(θ)])
                 end
             end
-    
+
             function lag_h!(h::AbstractVector, θ, σ, λ, p)
                 global _p = p
                 H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)

@@ -256,7 +256,7 @@ function OptimizationBase.instantiate_function(
                         1:length(θ), 1:length(θ)])
                 end
             end
-    
+
             function lag_h!(h::AbstractVector, θ, σ, λ, p)
                 global _p = p
                 H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)
@@ -294,21 +294,20 @@ end
 
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
-        adtype::ADTypes.AutoZygote, num_cons = 0;
-        g = false, h = false, hv = false, fg = false, fgh = false,
-        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false)
+        adtype::ADTypes.AutoZygote, num_cons = 0; kwargs...)
     x = cache.u0
     p = cache.p
 
     return OptimizationBase.instantiate_function(
-        f, x, adtype, p, num_cons; g, h, hv, fg, fgh, cons_j, cons_vjp, cons_jvp, cons_h)
+        f, x, adtype, p, num_cons; kwargs...)
 end
 
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, x, adtype::ADTypes.AutoSparse{<:AutoZygote},
         p = SciMLBase.NullParameters(), num_cons = 0;
         g = false, h = false, hv = false, fg = false, fgh = false,
-        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false)
+        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
+        lag_h = false)
     function _f(θ)
         return f.f(θ, p)[1]
     end
@@ -510,7 +509,7 @@ function OptimizationBase.instantiate_function(
     end
 
     lag_hess_prototype = f.lag_hess_prototype
-    if cons !== nothing && cons_h == true && f.lag_h === nothing
+    if cons !== nothing && cons_h == true && f.lag_h === nothing && lag_h == true
         lag_extras = prepare_hessian(
             lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
         lag_hess_prototype = lag_extras.coloring_result.S[1:length(θ), 1:length(θ)]

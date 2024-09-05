@@ -192,7 +192,8 @@ function instantiate_function(
         if p !== SciMLBase.NullParameters() && p !== nothing
             function fgh!(G, H, θ, p)
                 global _p = p
-                (y, _, _) = value_derivative_and_second_derivative!(_f, G, H, θ, extras_hess)
+                (y, _, _) = value_derivative_and_second_derivative!(
+                    _f, G, H, θ, extras_hess)
                 return y
             end
         end
@@ -351,7 +352,7 @@ function instantiate_function(
                         1:length(θ), 1:length(θ)]
                 end
             end
-    
+
             function lag_h!(h, θ, σ, λ, p)
                 global _p = p
                 H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
@@ -461,7 +462,8 @@ function instantiate_function(
         if p !== SciMLBase.NullParameters() && p !== nothing
             function fgh!(θ, p)
                 global _p = p
-                (y, G, H) = value_derivative_and_second_derivative(_f, soadtype, θ, extras_hess)
+                (y, G, H) = value_derivative_and_second_derivative(
+                    _f, soadtype, θ, extras_hess)
                 return y, G, H
             end
         end
