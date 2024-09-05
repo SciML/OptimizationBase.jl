@@ -43,7 +43,8 @@ function that is not defined, an error is thrown.
 For more information on the use of automatic differentiation, see the
 documentation of the `AbstractADType` types.
 """
-function instantiate_function(f::MultiObjectiveOptimizationFunction, x, ::SciMLBase.NoAD,
+function OptimizationBase.instantiate_function(
+        f::MultiObjectiveOptimizationFunction, x, ::SciMLBase.NoAD,
         p, num_cons = 0)
     jac = f.jac === nothing ? nothing : (J, x, args...) -> f.jac(J, x, p, args...)
     hess = f.hess === nothing ? nothing :
@@ -76,7 +77,7 @@ function instantiate_function(f::MultiObjectiveOptimizationFunction, x, ::SciMLB
         observed = f.observed)
 end
 
-function instantiate_function(
+function OptimizationBase.instantiate_function(
         f::MultiObjectiveOptimizationFunction, cache::ReInitCache, ::SciMLBase.NoAD,
         num_cons = 0)
     jac = f.jac === nothing ? nothing : (J, x, args...) -> f.jac(J, x, cache.p, args...)
@@ -110,8 +111,9 @@ function instantiate_function(
         observed = f.observed)
 end
 
-function instantiate_function(f::OptimizationFunction{true}, x, ::SciMLBase.NoAD,
-        p, num_cons = 0, kwargs...)
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, x, ::SciMLBase.NoAD,
+        p, num_cons = 0; kwargs...)
     grad = f.grad === nothing ? nothing : (G, x, args...) -> f.grad(G, x, p, args...)
     fg = f.fg === nothing ? nothing : (G, x, args...) -> f.fg(G, x, p, args...)
     hess = f.hess === nothing ? nothing : (H, x, args...) -> f.hess(H, x, p, args...)
@@ -146,17 +148,17 @@ function instantiate_function(f::OptimizationFunction{true}, x, ::SciMLBase.NoAD
         observed = f.observed)
 end
 
-function instantiate_function(
+function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, cache::ReInitCache, ::SciMLBase.NoAD,
-        num_cons = 0, kwargs...)
+        num_cons = 0; kwargs...)
     x = cache.u0
     p = cache.p
 
-    return instantiate_function(f, x, SciMLBase.NoAD(), p, num_cons, kwargs...)
+    return instantiate_function(f, x, SciMLBase.NoAD(), p, num_cons; kwargs...)
 end
 
 function instantiate_function(f::OptimizationFunction, x, adtype::ADTypes.AbstractADType,
-        p, num_cons = 0, kwargs...)
+        p, num_cons = 0; kwargs...)
     adtypestr = string(adtype)
     _strtind = findfirst('.', adtypestr)
     strtind = isnothing(_strtind) ? 5 : _strtind + 5

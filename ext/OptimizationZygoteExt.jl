@@ -334,7 +334,7 @@ function OptimizationBase.instantiate_function(
         grad = nothing
     end
 
-    if fg == true && f.fg !== nothing
+    if fg == true && f.fg === nothing
         if g == false
             extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
         end
@@ -360,7 +360,7 @@ function OptimizationBase.instantiate_function(
 
     hess_sparsity = f.hess_prototype
     hess_colors = f.hess_colorvec
-    if f.hess === nothing
+    if h == true && f.hess === nothing
         extras_hess = prepare_hessian(_f, soadtype, x) #placeholder logic, can be made much better
         function hess(res, θ)
             hessian!(_f, res, soadtype, θ, extras_hess)
@@ -383,7 +383,7 @@ function OptimizationBase.instantiate_function(
         hess = nothing
     end
 
-    if fgh == true && f.fgh !== nothing
+    if fgh == true && f.fgh === nothing
         function fgh!(G, H, θ)
             (y, _, _) = value_derivative_and_second_derivative!(_f, G, H, θ, extras_hess)
             return y
@@ -405,7 +405,7 @@ function OptimizationBase.instantiate_function(
         fgh! = nothing
     end
 
-    if hv == true && f.hv !== nothing
+    if hv == true && f.hv === nothing
         extras_hvp = prepare_hvp(_f, soadtype.dense_ad, x, zeros(eltype(x), size(x)))
         function hv!(H, θ, v)
             hvp!(_f, H, soadtype.dense_ad, θ, v, extras_hvp)
@@ -509,7 +509,8 @@ function OptimizationBase.instantiate_function(
     end
 
     lag_hess_prototype = f.lag_hess_prototype
-    if cons !== nothing && cons_h == true && f.lag_h === nothing && lag_h == true
+    lag_hess_colors = f.lag_hess_colorvec
+    if cons !== nothing && f.lag_h === nothing && lag_h == true
         lag_extras = prepare_hessian(
             lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
         lag_hess_prototype = lag_extras.coloring_result.S[1:length(θ), 1:length(θ)]

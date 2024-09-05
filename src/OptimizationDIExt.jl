@@ -104,7 +104,7 @@ function instantiate_function(
         hess = nothing
     end
 
-    if fgh == true && f.fgh !== nothing
+    if fgh == true && f.fgh === nothing
         function fgh!(G, H, θ)
             (y, _, _) = value_derivative_and_second_derivative!(
                 _f, G, H, soadtype, θ, extras_hess)
@@ -388,7 +388,7 @@ function instantiate_function(
         hess = nothing
     end
 
-    if fgh == true && f.fgh !== nothing
+    if fgh == true && f.fgh === nothing
         function fgh!(θ)
             (y, G, H) = value_derivative_and_second_derivative(_f, adtype, θ, extras_hess)
             return y, G, H

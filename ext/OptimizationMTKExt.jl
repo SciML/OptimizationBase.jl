@@ -57,7 +57,7 @@ end
 
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
-        adtype::AutoSparse{<:AutoSymbolics}, num_cons = 0,
+        adtype::AutoSparse{<:AutoSymbolics}, num_cons = 0;
         g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
         lag_h = false)
@@ -107,7 +107,7 @@ end
 
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, x, adtype::AutoSymbolics, p,
-        num_cons = 0, g = false, h = false, hv = false, fg = false, fgh = false,
+        num_cons = 0; g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
         lag_h = false)
     p = isnothing(p) ? SciMLBase.NullParameters() : p
@@ -155,7 +155,7 @@ end
 
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
-        adtype::AutoSymbolics, num_cons = 0,
+        adtype::AutoSymbolics, num_cons = 0;
         g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
         lag_h = false)

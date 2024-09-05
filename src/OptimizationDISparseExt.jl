@@ -135,7 +135,7 @@ function instantiate_function(
         grad = nothing
     end
 
-    if fg == true && f.fg !== nothing
+    if fg == true && f.fg === nothing
         if g == false
             extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
         end
@@ -184,7 +184,7 @@ function instantiate_function(
         hess = nothing
     end
 
-    if fgh == true && f.fgh !== nothing
+    if fgh == true && f.fgh === nothing
         function fgh!(G, H, θ)
             (y, _, _) = value_derivative_and_second_derivative!(_f, G, H, θ, extras_hess)
             return y
@@ -265,7 +265,7 @@ function instantiate_function(
         cons_j! = nothing
     end
 
-    if f.cons_vjp === nothing && cons_vjp == true
+    if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
         extras_pullback = prepare_pullback(cons_oop, adtype, x, ones(eltype(x), num_cons))
         function cons_vjp!(J, θ, v)
             pullback!(cons_oop, J, adtype.dense_ad, θ, v, extras_pullback)
@@ -276,7 +276,7 @@ function instantiate_function(
         cons_vjp! = nothing
     end
 
-    if f.cons_jvp === nothing && cons_jvp == true
+    if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
         extras_pushforward = prepare_pushforward(
             cons_oop, adtype, x, ones(eltype(x), length(x)))
         function cons_jvp!(J, θ, v)
@@ -432,7 +432,7 @@ function instantiate_function(
         grad = nothing
     end
 
-    if fg == true && f.fg !== nothing
+    if fg == true && f.fg === nothing
         if g == false
             extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
         end
@@ -453,7 +453,7 @@ function instantiate_function(
         fg! = nothing
     end
 
-    if fgh == true && f.fgh !== nothing
+    if fgh == true && f.fgh === nothing
         function fgh!(θ)
             (y, G, H) = value_derivative_and_second_derivative(_f, soadtype, θ, extras_hess)
             return y, G, H
@@ -556,7 +556,7 @@ function instantiate_function(
         cons_j! = nothing
     end
 
-    if f.cons_vjp === nothing && cons_vjp == true
+    if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
         extras_pullback = prepare_pullback(cons, adtype, x, ones(eltype(x), num_cons))
         function cons_vjp!(θ, v)
             pullback(cons, adtype, θ, v, extras_pullback)
@@ -567,7 +567,7 @@ function instantiate_function(
         cons_vjp! = nothing
     end
 
-    if f.cons_jvp === nothing && cons_jvp == true
+    if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
         extras_pushforward = prepare_pushforward(
             cons, adtype, x, ones(eltype(x), length(x)))
         function cons_jvp!(θ, v)
