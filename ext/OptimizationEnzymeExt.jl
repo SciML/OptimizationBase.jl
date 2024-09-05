@@ -397,11 +397,11 @@ end
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true},
         cache::OptimizationBase.ReInitCache,
         adtype::AutoEnzyme,
-        num_cons = 0)
+        num_cons = 0; kwargs...)
     p = cache.p
     x = cache.u0
 
-    return OptimizationBase.instantiate_function(f, x, adtype, p, num_cons)
+    return OptimizationBase.instantiate_function(f, x, adtype, p, num_cons; kwargs...)
 end
 
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x,
@@ -676,11 +676,11 @@ end
 function OptimizationBase.instantiate_function(f::OptimizationFunction{false},
         cache::OptimizationBase.ReInitCache,
         adtype::AutoEnzyme,
-        num_cons = 0)
+        num_cons = 0; kwargs...)
     p = cache.p
     x = cache.u0
 
-    return OptimizationBase.instantiate_function(f, x, adtype, p, num_cons)
+    return OptimizationBase.instantiate_function(f, x, adtype, p, num_cons; kwargs...)
 end
 
 end

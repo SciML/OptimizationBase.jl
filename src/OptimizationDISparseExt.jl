@@ -394,16 +394,11 @@ end
 
 function instantiate_function(
         f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
-        adtype::ADTypes.AutoSparse{<:AbstractADType}, num_cons = 0;
-        g = false, h = false, hv = false, fg = false, fgh = false,
-        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
-        lag_h = false)
+        adtype::ADTypes.AutoSparse{<:AbstractADType}, num_cons = 0; kwargs...)
     x = cache.u0
     p = cache.p
 
-    return instantiate_function(f, x, adtype, p, num_cons; g = g, h = h, hv = hv, fg = fg,
-        fgh = fgh, cons_j = cons_j, cons_vjp = cons_vjp, cons_jvp = cons_jvp, cons_h = cons_h,
-        lag_h = lag_h)
+    return instantiate_function(f, x, adtype, p, num_cons; kwargs...)
 end
 
 function instantiate_function(
@@ -660,9 +655,9 @@ end
 
 function instantiate_function(
         f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache,
-        adtype::ADTypes.AutoSparse{<:AbstractADType}, num_cons = 0)
+        adtype::ADTypes.AutoSparse{<:AbstractADType}, num_cons = 0; kwargs...)
     x = cache.u0
     p = cache.p
 
-    return instantiate_function(f, x, adtype, p, num_cons)
+    return instantiate_function(f, x, adtype, p, num_cons; kwargs...)
 end

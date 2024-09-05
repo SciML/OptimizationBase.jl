@@ -587,14 +587,11 @@ end
 
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
-        adtype::ADTypes.AutoSparse{<:AutoZygote}, num_cons = 0;
-        g = false, h = false, hv = false, fg = false, fgh = false,
-        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false)
+        adtype::ADTypes.AutoSparse{<:AutoZygote}, num_cons = 0; kwargs...)
     x = cache.u0
     p = cache.p
 
-    return OptimizationBase.instantiate_function(
-        f, x, adtype, p, num_cons; g, h, hv, fg, fgh, cons_j, cons_vjp, cons_jvp, cons_h)
+    return OptimizationBase.instantiate_function(f, x, adtype, p, num_cons; kwargs...)
 end
 
 end
