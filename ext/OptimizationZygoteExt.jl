@@ -220,7 +220,7 @@ function OptimizationBase.instantiate_function(
     if f.lag_h === nothing && cons !== nothing && lag_h == true
         lag_extras = prepare_hessian(
             lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
-        lag_hess_prototype = zeros(Bool, length(x), length(x))
+        lag_hess_prototype = zeros(Bool, length(x) + num_cons + 1, length(x) + num_cons + 1)
 
         function lag_h!(H::AbstractMatrix, θ, σ, λ)
             if σ == zero(eltype(θ))
@@ -232,13 +232,11 @@ function OptimizationBase.instantiate_function(
             end
         end
 
-        function lag_h!(h, θ, σ, λ)
-            H = eltype(θ).(lag_hess_prototype)
-            hessian!(x -> lagrangian(x, σ, λ), H, soadtype, θ, lag_extras)
+        function lag_h!(h::AbstractVector, θ, σ, λ)
+            H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)
             k = 0
-            rows, cols, _ = findnz(H)
-            for (i, j) in zip(rows, cols)
-                if i <= j
+            for i in 1:length(θ)
+                for j in 1:i
                     k += 1
                     h[k] = H[i, j]
                 end
@@ -442,7 +440,7 @@ function OptimizationBase.instantiate_function(
             θ = augvars[1:length(x)]
             σ = augvars[length(x) + 1]
             λ = augvars[(length(x) + 2):end]
-            return σ * _f(θ) + dot(λ, cons(θ))
+            return σ * _f(θ) + dot(λ, cons_oop(θ))
         end
     end
 
@@ -465,7 +463,8 @@ function OptimizationBase.instantiate_function(
     end
 
     if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
-        extras_pullback = prepare_pullback(cons_oop, adtype, x)
+        extras_pullback = prepare_pullback(
+            cons_oop, adtype.dense_ad, x, ones(eltype(x), num_cons))
         function cons_vjp!(J, θ, v)
             pullback!(cons_oop, J, adtype.dense_ad, θ, v, extras_pullback)
         end
@@ -476,7 +475,8 @@ function OptimizationBase.instantiate_function(
     end
 
     if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
-        extras_pushforward = prepare_pushforward(cons_oop, adtype, x)
+        extras_pushforward = prepare_pushforward(
+            cons_oop, adtype.dense_ad, x, ones(eltype(x), length(x)))
         function cons_jvp!(J, θ, v)
             pushforward!(cons_oop, J, adtype.dense_ad, θ, v, extras_pushforward)
         end
@@ -513,7 +513,7 @@ function OptimizationBase.instantiate_function(
     if cons !== nothing && f.lag_h === nothing && lag_h == true
         lag_extras = prepare_hessian(
             lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
-        lag_hess_prototype = lag_extras.coloring_result.S[1:length(θ), 1:length(θ)]
+        lag_hess_prototype = lag_extras.coloring_result.S[1:length(x), 1:length(x)]
         lag_hess_colors = lag_extras.coloring_result.color
 
         function lag_h!(H::AbstractMatrix, θ, σ, λ)

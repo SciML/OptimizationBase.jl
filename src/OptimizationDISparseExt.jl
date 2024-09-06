@@ -266,7 +266,8 @@ function instantiate_function(
     end
 
     if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
-        extras_pullback = prepare_pullback(cons_oop, adtype, x, ones(eltype(x), num_cons))
+        extras_pullback = prepare_pullback(
+            cons_oop, adtype.dense_ad, x, ones(eltype(x), num_cons))
         function cons_vjp!(J, θ, v)
             pullback!(cons_oop, J, adtype.dense_ad, θ, v, extras_pullback)
         end
@@ -278,7 +279,7 @@ function instantiate_function(
 
     if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
         extras_pushforward = prepare_pushforward(
-            cons_oop, adtype, x, ones(eltype(x), length(x)))
+            cons_oop, adtype.dense_ad, x, ones(eltype(x), length(x)))
         function cons_jvp!(J, θ, v)
             pushforward!(cons_oop, J, adtype.dense_ad, θ, v, extras_pushforward)
         end
@@ -557,9 +558,10 @@ function instantiate_function(
     end
 
     if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
-        extras_pullback = prepare_pullback(cons, adtype, x, ones(eltype(x), num_cons))
+        extras_pullback = prepare_pullback(
+            cons, adtype.dense_ad, x, ones(eltype(x), num_cons))
         function cons_vjp!(θ, v)
-            pullback(cons, adtype, θ, v, extras_pullback)
+            pullback(cons, adtype.dense_ad, θ, v, extras_pullback)
         end
     elseif cons_vjp === true && cons !== nothing
         cons_vjp! = (θ, v) -> f.cons_vjp(θ, v, p)
@@ -569,9 +571,9 @@ function instantiate_function(
 
     if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
         extras_pushforward = prepare_pushforward(
-            cons, adtype, x, ones(eltype(x), length(x)))
+            cons, adtype.dense_ad, x, ones(eltype(x), length(x)))
         function cons_jvp!(θ, v)
-            pushforward(cons, adtype, θ, v, extras_pushforward)
+            pushforward(cons, adtype.dense_ad, θ, v, extras_pushforward)
         end
     elseif cons_jvp === true && cons !== nothing
         cons_jvp! = (θ, v) -> f.cons_jvp(θ, v, p)

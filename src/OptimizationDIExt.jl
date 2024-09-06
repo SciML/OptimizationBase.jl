@@ -229,7 +229,7 @@ function instantiate_function(
     if cons !== nothing && lag_h == true && f.lag_h === nothing
         lag_extras = prepare_hessian(
             lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
-        lag_hess_prototype = zeros(Bool, length(x), length(x))
+        lag_hess_prototype = zeros(Bool, length(x) + num_cons + 1, length(x) + num_cons + 1)
 
         function lag_h!(H::AbstractMatrix, θ, σ, λ)
             if σ == zero(eltype(θ))
@@ -507,7 +507,7 @@ function instantiate_function(
     if cons !== nothing && lag_h == true && f.lag_h === nothing
         lag_extras = prepare_hessian(
             lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
-        lag_hess_prototype = zeros(Bool, length(x), length(x))
+        lag_hess_prototype = zeros(Bool, length(x) + num_cons + 1, length(x) + num_cons + 1)
 
         function lag_h!(θ, σ, λ)
             if σ == zero(eltype(θ))
