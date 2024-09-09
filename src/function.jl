@@ -114,17 +114,87 @@ end
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, x, ::SciMLBase.NoAD,
         p, num_cons = 0; kwargs...)
-    grad = f.grad === nothing ? nothing : (G, x, args...) -> f.grad(G, x, p, args...)
-    fg = f.fg === nothing ? nothing : (G, x, args...) -> f.fg(G, x, p, args...)
-    hess = f.hess === nothing ? nothing : (H, x, args...) -> f.hess(H, x, p, args...)
-    fgh = f.fgh === nothing ? nothing : (G, H, x, args...) -> f.fgh(G, H, x, p, args...)
-    hv = f.hv === nothing ? nothing : (H, x, v, args...) -> f.hv(H, x, v, p, args...)
+    if f.grad === nothing
+        grad = nothing
+    else
+        function grad(G, x)
+            return f.grad(G, x, p)
+        end
+        if p != SciMLBase.NullParameters()
+            function grad(G, x, p)
+                return f.grad(G, x, p)
+            end
+        end
+    end
+    if f.fg === nothing
+        fg = nothing
+    else
+        function fg(G, x)
+            return f.fg(G, x, p)
+        end
+        if p != SciMLBase.NullParameters()
+            function fg(G, x, p)
+                return f.fg(G, x, p)
+            end
+        end
+    end
+    if f.hess === nothing
+        hess = nothing
+    else
+        function hess(H, x)
+            return f.hess(H, x, p)
+        end
+        if p != SciMLBase.NullParameters()
+            function hess(H, x, p)
+                return f.hess(H, x, p)
+            end
+        end
+    end
+
+    if f.fgh === nothing
+        fgh = nothing
+    else
+        function fgh(G, H, x)
+            return f.fgh(G, H, x, p)
+        end
+        if p != SciMLBase.NullParameters()
+            function fgh(G, H, x, p)
+                return f.fgh(G, H, x, p)
+            end
+        end
+    end
+
+    if f.hv === nothing
+        hv = nothing
+    else
+        function hv(H, x, v)
+            return f.hv(H, x, v, p)
+        end
+        if p != SciMLBase.NullParameters()
+            function hv(H, x, v, p)
+                return f.hv(H, x, v, p)
+            end
+        end
+    end
+
     cons = f.cons === nothing ? nothing : (res, x) -> f.cons(res, x, p)
     cons_j = f.cons_j === nothing ? nothing : (res, x) -> f.cons_j(res, x, p)
     cons_vjp = f.cons_vjp === nothing ? nothing : (res, x) -> f.cons_vjp(res, x, p)
     cons_jvp = f.cons_jvp === nothing ? nothing : (res, x) -> f.cons_jvp(res, x, p)
     cons_h = f.cons_h === nothing ? nothing : (res, x) -> f.cons_h(res, x, p)
-    lag_h = f.lag_h === nothing ? nothing : (res, x) -> f.lag_h(res, x, p)
+
+    if f.lag_h === nothing
+        lag_h = nothing
+    else
+        function lag_h(res, x)
+            return f.lag_h(res, x, p)
+        end
+        if p != SciMLBase.NullParameters()
+            function lag_h(res, x, p)
+                return f.lag_h(res, x, p)
+            end
+        end
+    end
     hess_prototype = f.hess_prototype === nothing ? nothing :
                      convert.(eltype(x), f.hess_prototype)
     cons_jac_prototype = f.cons_jac_prototype === nothing ? nothing :
