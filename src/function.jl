@@ -43,7 +43,8 @@ function that is not defined, an error is thrown.
 For more information on the use of automatic differentiation, see the
 documentation of the `AbstractADType` types.
 """
-function instantiate_function(f::MultiObjectiveOptimizationFunction, x, ::SciMLBase.NoAD,
+function OptimizationBase.instantiate_function(
+        f::MultiObjectiveOptimizationFunction, x, ::SciMLBase.NoAD,
         p, num_cons = 0)
     jac = f.jac === nothing ? nothing : (J, x, args...) -> f.jac(J, x, p, args...)
     hess = f.hess === nothing ? nothing :
@@ -76,7 +77,7 @@ function instantiate_function(f::MultiObjectiveOptimizationFunction, x, ::SciMLB
         observed = f.observed)
 end
 
-function instantiate_function(
+function OptimizationBase.instantiate_function(
         f::MultiObjectiveOptimizationFunction, cache::ReInitCache, ::SciMLBase.NoAD,
         num_cons = 0)
     jac = f.jac === nothing ? nothing : (J, x, args...) -> f.jac(J, x, cache.p, args...)
@@ -110,19 +111,90 @@ function instantiate_function(
         observed = f.observed)
 end
 
-function instantiate_function(f::OptimizationFunction{true}, x, ::SciMLBase.NoAD,
-        p, num_cons = 0, kwargs...)
-    grad = f.grad === nothing ? nothing : (G, x, args...) -> f.grad(G, x, p, args...)
-    fg = f.fg === nothing ? nothing : (G, x, args...) -> f.fg(G, x, p, args...)
-    hess = f.hess === nothing ? nothing : (H, x, args...) -> f.hess(H, x, p, args...)
-    fgh = f.fgh === nothing ? nothing : (G, H, x, args...) -> f.fgh(G, H, x, p, args...)
-    hv = f.hv === nothing ? nothing : (H, x, v, args...) -> f.hv(H, x, v, p, args...)
+function OptimizationBase.instantiate_function(
+        f::OptimizationFunction{true}, x, ::SciMLBase.NoAD,
+        p, num_cons = 0; kwargs...)
+    if f.grad === nothing
+        grad = nothing
+    else
+        function grad(G, x)
+            return f.grad(G, x, p)
+        end
+        if p != SciMLBase.NullParameters()
+            function grad(G, x, p)
+                return f.grad(G, x, p)
+            end
+        end
+    end
+    if f.fg === nothing
+        fg = nothing
+    else
+        function fg(G, x)
+            return f.fg(G, x, p)
+        end
+        if p != SciMLBase.NullParameters()
+            function fg(G, x, p)
+                return f.fg(G, x, p)
+            end
+        end
+    end
+    if f.hess === nothing
+        hess = nothing
+    else
+        function hess(H, x)
+            return f.hess(H, x, p)
+        end
+        if p != SciMLBase.NullParameters()
+            function hess(H, x, p)
+                return f.hess(H, x, p)
+            end
+        end
+    end
+
+    if f.fgh === nothing
+        fgh = nothing
+    else
+        function fgh(G, H, x)
+            return f.fgh(G, H, x, p)
+        end
+        if p != SciMLBase.NullParameters()
+            function fgh(G, H, x, p)
+                return f.fgh(G, H, x, p)
+            end
+        end
+    end
+
+    if f.hv === nothing
+        hv = nothing
+    else
+        function hv(H, x, v)
+            return f.hv(H, x, v, p)
+        end
+        if p != SciMLBase.NullParameters()
+            function hv(H, x, v, p)
+                return f.hv(H, x, v, p)
+            end
+        end
+    end
+
     cons = f.cons === nothing ? nothing : (res, x) -> f.cons(res, x, p)
     cons_j = f.cons_j === nothing ? nothing : (res, x) -> f.cons_j(res, x, p)
     cons_vjp = f.cons_vjp === nothing ? nothing : (res, x) -> f.cons_vjp(res, x, p)
     cons_jvp = f.cons_jvp === nothing ? nothing : (res, x) -> f.cons_jvp(res, x, p)
     cons_h = f.cons_h === nothing ? nothing : (res, x) -> f.cons_h(res, x, p)
-    lag_h = f.lag_h === nothing ? nothing : (res, x) -> f.lag_h(res, x, p)
+
+    if f.lag_h === nothing
+        lag_h = nothing
+    else
+        function lag_h(res, x)
+            return f.lag_h(res, x, p)
+        end
+        if p != SciMLBase.NullParameters()
+            function lag_h(res, x, p)
+                return f.lag_h(res, x, p)
+            end
+        end
+    end
     hess_prototype = f.hess_prototype === nothing ? nothing :
                      convert.(eltype(x), f.hess_prototype)
     cons_jac_prototype = f.cons_jac_prototype === nothing ? nothing :
@@ -146,17 +218,17 @@ function instantiate_function(f::OptimizationFunction{true}, x, ::SciMLBase.NoAD
         observed = f.observed)
 end
 
-function instantiate_function(
+function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, cache::ReInitCache, ::SciMLBase.NoAD,
-        num_cons = 0, kwargs...)
+        num_cons = 0; kwargs...)
     x = cache.u0
     p = cache.p
 
-    return instantiate_function(f, x, SciMLBase.NoAD(), p, num_cons, kwargs...)
+    return instantiate_function(f, x, SciMLBase.NoAD(), p, num_cons; kwargs...)
 end
 
 function instantiate_function(f::OptimizationFunction, x, adtype::ADTypes.AbstractADType,
-        p, num_cons = 0, kwargs...)
+        p, num_cons = 0; kwargs...)
     adtypestr = string(adtype)
     _strtind = findfirst('.', adtypestr)
     strtind = isnothing(_strtind) ? 5 : _strtind + 5

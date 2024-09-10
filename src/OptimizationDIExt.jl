@@ -104,7 +104,7 @@ function instantiate_function(
         hess = nothing
     end
 
-    if fgh == true && f.fgh !== nothing
+    if fgh == true && f.fgh === nothing
         function fgh!(G, H, θ)
             (y, _, _) = value_derivative_and_second_derivative!(
                 _f, G, H, soadtype, θ, extras_hess)
@@ -229,7 +229,7 @@ function instantiate_function(
     if cons !== nothing && lag_h == true && f.lag_h === nothing
         lag_extras = prepare_hessian(
             lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
-        lag_hess_prototype = zeros(Bool, length(x), length(x))
+        lag_hess_prototype = zeros(Bool, length(x) + num_cons + 1, length(x) + num_cons + 1)
 
         function lag_h!(H::AbstractMatrix, θ, σ, λ)
             if σ == zero(eltype(θ))
@@ -263,7 +263,7 @@ function instantiate_function(
                         1:length(θ), 1:length(θ)])
                 end
             end
-    
+
             function lag_h!(h::AbstractVector, θ, σ, λ, p)
                 global _p = p
                 H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)
@@ -301,16 +301,12 @@ end
 
 function instantiate_function(
         f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
-        adtype::ADTypes.AbstractADType, num_cons = 0,
-        g = false, h = false, hv = false, fg = false, fgh = false,
-        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
-        lag_h = false)
+        adtype::ADTypes.AbstractADType, num_cons = 0;
+        kwargs...)
     x = cache.u0
     p = cache.p
 
-    return instantiate_function(f, x, adtype, p, num_cons; g = g, h = h, hv = hv,
-        fg = fg, fgh = fgh, cons_j = cons_j, cons_vjp = cons_vjp, cons_jvp = cons_jvp,
-        cons_h = cons_h, lag_h = lag_h)
+    return instantiate_function(f, x, adtype, p, num_cons; kwargs...)
 end
 
 function instantiate_function(
@@ -392,7 +388,7 @@ function instantiate_function(
         hess = nothing
     end
 
-    if fgh == true && f.fgh !== nothing
+    if fgh == true && f.fgh === nothing
         function fgh!(θ)
             (y, G, H) = value_derivative_and_second_derivative(_f, adtype, θ, extras_hess)
             return y, G, H
@@ -511,7 +507,7 @@ function instantiate_function(
     if cons !== nothing && lag_h == true && f.lag_h === nothing
         lag_extras = prepare_hessian(
             lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
-        lag_hess_prototype = zeros(Bool, length(x), length(x))
+        lag_hess_prototype = zeros(Bool, length(x) + num_cons + 1, length(x) + num_cons + 1)
 
         function lag_h!(θ, σ, λ)
             if σ == zero(eltype(θ))
@@ -558,9 +554,9 @@ end
 
 function instantiate_function(
         f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache,
-        adtype::ADTypes.AbstractADType, num_cons = 0)
+        adtype::ADTypes.AbstractADType, num_cons = 0; kwargs...)
     x = cache.u0
     p = cache.p
 
-    return instantiate_function(f, x, adtype, p, num_cons)
+    return instantiate_function(f, x, adtype, p, num_cons; kwargs...)
 end

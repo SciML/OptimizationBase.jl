@@ -135,7 +135,7 @@ function instantiate_function(
         grad = nothing
     end
 
-    if fg == true && f.fg !== nothing
+    if fg == true && f.fg === nothing
         if g == false
             extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
         end
@@ -184,7 +184,7 @@ function instantiate_function(
         hess = nothing
     end
 
-    if fgh == true && f.fgh !== nothing
+    if fgh == true && f.fgh === nothing
         function fgh!(G, H, θ)
             (y, _, _) = value_derivative_and_second_derivative!(_f, G, H, θ, extras_hess)
             return y
@@ -192,7 +192,8 @@ function instantiate_function(
         if p !== SciMLBase.NullParameters() && p !== nothing
             function fgh!(G, H, θ, p)
                 global _p = p
-                (y, _, _) = value_derivative_and_second_derivative!(_f, G, H, θ, extras_hess)
+                (y, _, _) = value_derivative_and_second_derivative!(
+                    _f, G, H, θ, extras_hess)
                 return y
             end
         end
@@ -264,8 +265,9 @@ function instantiate_function(
         cons_j! = nothing
     end
 
-    if f.cons_vjp === nothing && cons_vjp == true
-        extras_pullback = prepare_pullback(cons_oop, adtype, x, ones(eltype(x), num_cons))
+    if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
+        extras_pullback = prepare_pullback(
+            cons_oop, adtype.dense_ad, x, ones(eltype(x), num_cons))
         function cons_vjp!(J, θ, v)
             pullback!(cons_oop, J, adtype.dense_ad, θ, v, extras_pullback)
         end
@@ -275,9 +277,9 @@ function instantiate_function(
         cons_vjp! = nothing
     end
 
-    if f.cons_jvp === nothing && cons_jvp == true
+    if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
         extras_pushforward = prepare_pushforward(
-            cons_oop, adtype, x, ones(eltype(x), length(x)))
+            cons_oop, adtype.dense_ad, x, ones(eltype(x), length(x)))
         function cons_jvp!(J, θ, v)
             pushforward!(cons_oop, J, adtype.dense_ad, θ, v, extras_pushforward)
         end
@@ -351,7 +353,7 @@ function instantiate_function(
                         1:length(θ), 1:length(θ)]
                 end
             end
-    
+
             function lag_h!(h, θ, σ, λ, p)
                 global _p = p
                 H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
@@ -394,16 +396,11 @@ end
 
 function instantiate_function(
         f::OptimizationFunction{true}, cache::OptimizationBase.ReInitCache,
-        adtype::ADTypes.AutoSparse{<:AbstractADType}, num_cons = 0;
-        g = false, h = false, hv = false, fg = false, fgh = false,
-        cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
-        lag_h = false)
+        adtype::ADTypes.AutoSparse{<:AbstractADType}, num_cons = 0; kwargs...)
     x = cache.u0
     p = cache.p
 
-    return instantiate_function(f, x, adtype, p, num_cons; g = g, h = h, hv = hv, fg = fg,
-        fgh = fgh, cons_j = cons_j, cons_vjp = cons_vjp, cons_jvp = cons_jvp, cons_h = cons_h,
-        lag_h = lag_h)
+    return instantiate_function(f, x, adtype, p, num_cons; kwargs...)
 end
 
 function instantiate_function(
@@ -436,7 +433,7 @@ function instantiate_function(
         grad = nothing
     end
 
-    if fg == true && f.fg !== nothing
+    if fg == true && f.fg === nothing
         if g == false
             extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
         end
@@ -457,7 +454,7 @@ function instantiate_function(
         fg! = nothing
     end
 
-    if fgh == true && f.fgh !== nothing
+    if fgh == true && f.fgh === nothing
         function fgh!(θ)
             (y, G, H) = value_derivative_and_second_derivative(_f, soadtype, θ, extras_hess)
             return y, G, H
@@ -466,7 +463,8 @@ function instantiate_function(
         if p !== SciMLBase.NullParameters() && p !== nothing
             function fgh!(θ, p)
                 global _p = p
-                (y, G, H) = value_derivative_and_second_derivative(_f, soadtype, θ, extras_hess)
+                (y, G, H) = value_derivative_and_second_derivative(
+                    _f, soadtype, θ, extras_hess)
                 return y, G, H
             end
         end
@@ -559,10 +557,11 @@ function instantiate_function(
         cons_j! = nothing
     end
 
-    if f.cons_vjp === nothing && cons_vjp == true
-        extras_pullback = prepare_pullback(cons, adtype, x, ones(eltype(x), num_cons))
+    if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
+        extras_pullback = prepare_pullback(
+            cons, adtype.dense_ad, x, ones(eltype(x), num_cons))
         function cons_vjp!(θ, v)
-            pullback(cons, adtype, θ, v, extras_pullback)
+            pullback(cons, adtype.dense_ad, θ, v, extras_pullback)
         end
     elseif cons_vjp === true && cons !== nothing
         cons_vjp! = (θ, v) -> f.cons_vjp(θ, v, p)
@@ -570,11 +569,11 @@ function instantiate_function(
         cons_vjp! = nothing
     end
 
-    if f.cons_jvp === nothing && cons_jvp == true
+    if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
         extras_pushforward = prepare_pushforward(
-            cons, adtype, x, ones(eltype(x), length(x)))
+            cons, adtype.dense_ad, x, ones(eltype(x), length(x)))
         function cons_jvp!(θ, v)
-            pushforward(cons, adtype, θ, v, extras_pushforward)
+            pushforward(cons, adtype.dense_ad, θ, v, extras_pushforward)
         end
     elseif cons_jvp === true && cons !== nothing
         cons_jvp! = (θ, v) -> f.cons_jvp(θ, v, p)
@@ -660,9 +659,9 @@ end
 
 function instantiate_function(
         f::OptimizationFunction{false}, cache::OptimizationBase.ReInitCache,
-        adtype::ADTypes.AutoSparse{<:AbstractADType}, num_cons = 0)
+        adtype::ADTypes.AutoSparse{<:AbstractADType}, num_cons = 0; kwargs...)
     x = cache.u0
     p = cache.p
 
-    return instantiate_function(f, x, adtype, p, num_cons)
+    return instantiate_function(f, x, adtype, p, num_cons; kwargs...)
 end

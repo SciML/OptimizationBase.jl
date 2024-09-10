@@ -5,7 +5,7 @@ struct AnalysisResults
     constraints::Union{Nothing, Vector{AnalysisResult}}
 end
 
-struct OptimizationCache{F, RC, LB, UB, LC, UC, S, O, D, P, C, M} <:
+struct OptimizationCache{F, RC, LB, UB, LC, UC, S, O, P, C, M} <:
        SciMLBase.AbstractOptimizationCache
     f::F
     reinit_cache::RC
@@ -15,7 +15,6 @@ struct OptimizationCache{F, RC, LB, UB, LC, UC, S, O, D, P, C, M} <:
     ucons::UC
     sense::S
     opt::O
-    data::D
     progress::P
     callback::C
     manifold::M
@@ -23,7 +22,7 @@ struct OptimizationCache{F, RC, LB, UB, LC, UC, S, O, D, P, C, M} <:
     solver_args::NamedTuple
 end
 
-function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFAULT_DATA;
+function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
         callback = DEFAULT_CALLBACK,
         maxiters::Union{Number, Nothing} = nothing,
         maxtime::Union{Number, Nothing} = nothing,
@@ -36,8 +35,9 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
     reinit_cache = OptimizationBase.ReInitCache(prob.u0, prob.p)
     num_cons = prob.ucons === nothing ? 0 : length(prob.ucons)
     f = OptimizationBase.instantiate_function(
-        prob.f, reinit_cache, prob.f.adtype, num_cons,
-        g = SciMLBase.requiresgradient(opt), h = SciMLBase.requireshessian(opt), fg = SciMLBase.allowsfg(opt),
+        prob.f, reinit_cache, prob.f.adtype, num_cons;
+        g = SciMLBase.requiresgradient(opt), h = SciMLBase.requireshessian(opt),
+        hv = SciMLBase.requireshessian(opt), fg = SciMLBase.allowsfg(opt),
         fgh = SciMLBase.allowsfgh(opt), cons_j = SciMLBase.requiresconsjac(opt), cons_h = SciMLBase.requiresconshess(opt),
         cons_vjp = SciMLBase.allowsconsjvp(opt), cons_jvp = SciMLBase.allowsconsjvp(opt), lag_h = SciMLBase.requireslagh(opt))
 
@@ -149,13 +149,12 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt, data = DEFA
 
     return OptimizationCache(f, reinit_cache, prob.lb, prob.ub, prob.lcons,
         prob.ucons, prob.sense,
-        opt, data, progress, callback, manifold, AnalysisResults(obj_res, cons_res),
+        opt, progress, callback, manifold, AnalysisResults(obj_res, cons_res),
         merge((; maxiters, maxtime, abstol, reltol),
             NamedTuple(kwargs)))
 end
 
-function SciMLBase.__init(prob::SciMLBase.OptimizationProblem, opt,
-        data = DEFAULT_DATA;
+function SciMLBase.__init(prob::SciMLBase.OptimizationProblem, opt;
         callback = DEFAULT_CALLBACK,
         maxiters::Union{Number, Nothing} = nothing,
         maxtime::Union{Number, Nothing} = nothing,
@@ -163,7 +162,7 @@ function SciMLBase.__init(prob::SciMLBase.OptimizationProblem, opt,
         reltol::Union{Number, Nothing} = nothing,
         progress = false,
         kwargs...)
-    return OptimizationCache(prob, opt, data; maxiters, maxtime, abstol, callback,
+    return OptimizationCache(prob, opt; maxiters, maxtime, abstol, callback,
         reltol, progress,
         kwargs...)
 end
