@@ -45,7 +45,7 @@ documentation of the `AbstractADType` types.
 """
 function OptimizationBase.instantiate_function(
         f::MultiObjectiveOptimizationFunction, x, ::SciMLBase.NoAD,
-        p, num_cons = 0)
+        p, num_cons = 0; kwargs...)
     jac = f.jac === nothing ? nothing : (J, x, args...) -> f.jac(J, x, p, args...)
     hess = f.hess === nothing ? nothing :
            [(H, x, args...) -> h(H, x, p, args...) for h in f.hess]
@@ -79,7 +79,7 @@ end
 
 function OptimizationBase.instantiate_function(
         f::MultiObjectiveOptimizationFunction, cache::ReInitCache, ::SciMLBase.NoAD,
-        num_cons = 0)
+        num_cons = 0; kwargs...)
     jac = f.jac === nothing ? nothing : (J, x, args...) -> f.jac(J, x, cache.p, args...)
     hess = f.hess === nothing ? nothing :
            [(H, x, args...) -> h(H, x, cache.p, args...) for h in f.hess]
