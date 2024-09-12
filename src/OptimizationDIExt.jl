@@ -50,10 +50,7 @@ function instantiate_function(
             end
         end
     elseif g == true
-        grad = (G, θ) -> f.grad(G, θ, p)
-        if p !== SciMLBase.NullParameters() && p !== nothing
-            grad = (G, θ, p) -> f.grad(G, θ, p)
-        end
+        grad = (G, θ, p = p) -> f.grad(G, θ, p)
     else
         grad = nothing
     end
@@ -74,10 +71,7 @@ function instantiate_function(
             end
         end
     elseif fg == true
-        fg! = (G, θ) -> f.fg(G, θ, p)
-        if p !== SciMLBase.NullParameters()
-            fg! = (G, θ, p) -> f.fg(G, θ, p)
-        end
+        fg! = (G, θ, p = p) -> f.fg(G, θ, p)
     else
         fg! = nothing
     end
@@ -96,10 +90,7 @@ function instantiate_function(
             end
         end
     elseif h == true
-        hess = (H, θ) -> f.hess(H, θ, p)
-        if p !== SciMLBase.NullParameters() && p !== nothing
-            hess = (H, θ, p) -> f.hess(H, θ, p)
-        end
+        hess = (H, θ, p = p) -> f.hess(H, θ, p)
     else
         hess = nothing
     end
@@ -119,10 +110,7 @@ function instantiate_function(
             end
         end
     elseif fgh == true
-        fgh! = (G, H, θ) -> f.fgh(G, H, θ, p)
-        if p !== SciMLBase.NullParameters() && p !== nothing
-            fgh! = (G, H, θ, p) -> f.fgh(G, H, θ, p)
-        end
+        fgh! = (G, H, θ, p = p) -> f.fgh(G, H, θ, p)
     else
         fgh! = nothing
     end
@@ -139,10 +127,7 @@ function instantiate_function(
             end
         end
     elseif hv == true
-        hv! = (H, θ, v) -> f.hv(H, θ, v, p)
-        if p !== SciMLBase.NullParameters() && p !== nothing
-            hv! = (H, θ, v, p) -> f.hv(H, θ, v, p)
-        end
+        hv! = (H, θ, v, p = p) -> f.hv(H, θ, v, p)
     else
         hv! = nothing
     end
@@ -277,7 +262,7 @@ function instantiate_function(
             end
         end
     elseif lag_h == true && cons !== nothing
-        lag_h! = (res, θ, σ, μ) -> f.lag_h(res, θ, σ, μ, p)
+        lag_h! = (res, θ, σ, μ, p = p) -> f.lag_h(res, θ, σ, μ, p)
     else
         lag_h! = nothing
     end
@@ -334,10 +319,7 @@ function instantiate_function(
             end
         end
     elseif g == true
-        grad = (θ) -> f.grad(θ, p)
-        if p !== SciMLBase.NullParameters() && p !== nothing
-            grad = (θ, p) -> f.grad(θ, p)
-        end
+        grad = (θ, p = p) -> f.grad(θ, p)
     else
         grad = nothing
     end
@@ -358,10 +340,7 @@ function instantiate_function(
             end
         end
     elseif fg == true
-        fg! = (θ) -> f.fg(θ, p)
-        if p !== SciMLBase.NullParameters() && p !== nothing
-            fg! = (θ, p) -> f.fg(θ, p)
-        end
+        fg! = (θ, p = p) -> f.fg(θ, p)
     else
         fg! = nothing
     end
@@ -380,10 +359,7 @@ function instantiate_function(
             end
         end
     elseif h == true
-        hess = (θ) -> f.hess(θ, p)
-        if p !== SciMLBase.NullParameters() && p !== nothing
-            hess = (θ, p) -> f.hess(θ, p)
-        end
+        hess = (θ, p = p) -> f.hess(θ, p)
     else
         hess = nothing
     end
@@ -401,10 +377,7 @@ function instantiate_function(
             end
         end
     elseif fgh == true
-        fgh! = (θ) -> f.fgh(θ, p)
-        if p !== SciMLBase.NullParameters() && p !== nothing
-            fgh! = (θ, p) -> f.fgh(θ, p)
-        end
+        fgh! = (θ, p = p) -> f.fgh(θ, p)
     else
         fgh! = nothing
     end
@@ -421,10 +394,7 @@ function instantiate_function(
             end
         end
     elseif hv == true
-        hv! = (θ, v) -> f.hv(θ, v, p)
-        if p !== SciMLBase.NullParameters() && p !== nothing
-            hv! = (θ, v, p) -> f.hv(θ, v, p)
-        end
+        hv! = (θ, v, p = p) -> f.hv(θ, v, p)
     else
         hv! = nothing
     end
@@ -530,7 +500,7 @@ function instantiate_function(
             end
         end
     elseif lag_h == true && cons !== nothing
-        lag_h! = (θ, σ, λ) -> f.lag_h(θ, σ, λ, p)
+        lag_h! = (θ, σ, λ, p = p) -> f.lag_h(θ, σ, λ, p)
     else
         lag_h! = nothing
     end
