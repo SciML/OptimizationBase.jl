@@ -563,7 +563,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             return res_vjp
         end
     elseif cons_vjp == true && cons !== nothing
-        cons_vjp! = (θ, σ) -> f.cons_vjp(θ, σ, p)
+        cons_vjp! = (θ, v) -> f.cons_vjp(θ, v, p)
     else
         cons_vjp! = nothing
     end
