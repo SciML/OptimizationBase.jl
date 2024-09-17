@@ -371,7 +371,7 @@ function OptimizationBase.instantiate_function(
             end
         end
     elseif fgh == true
-        fgh!(G, H, θ, p = p) = f.fgh(G, H, θ, p)
+        fgh! = (G, H, θ, p = p) -> f.fgh(G, H, θ, p)
     else
         fgh! = nothing
     end
