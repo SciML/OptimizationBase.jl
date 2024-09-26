@@ -116,14 +116,14 @@ function instantiate_function(
     end
 
     if hv == true && f.hv === nothing
-        prep_hvp = prepare_hvp(_f, soadtype, x, zeros(eltype(x), size(x)))
+        prep_hvp = prepare_hvp(_f, soadtype, x, (zeros(eltype(x), size(x)),))
         function hv!(H, θ, v)
-            hvp!(_f, H, prep_hvp, soadtype, θ, v)
+            only(hvp!(_f, (H,), prep_hvp, soadtype, θ, (v,)))
         end
         if p !== SciMLBase.NullParameters() && p !== nothing
             function hv!(H, θ, v, p)
                 global _p = p
-                hvp!(_f, H, soadtype, θ, v)
+                only(hvp!(_f, (H,), soadtype, θ, (v,)))
             end
         end
     elseif hv == true
@@ -170,9 +170,9 @@ function instantiate_function(
     end
 
     if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
-        prep_pullback = prepare_pullback(cons_oop, adtype, x, ones(eltype(x), num_cons))
+        prep_pullback = prepare_pullback(cons_oop, adtype, x, (ones(eltype(x), num_cons),))
         function cons_vjp!(J, θ, v)
-            pullback!(cons_oop, J, prep_pullback, adtype, θ, v)
+            only(pullback!(cons_oop, (J,), prep_pullback, adtype, θ, (v,)))
         end
     elseif cons_vjp == true && cons !== nothing
         cons_vjp! = (J, θ, v) -> f.cons_vjp(J, θ, v, p)
@@ -182,9 +182,9 @@ function instantiate_function(
 
     if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
         prep_pushforward = prepare_pushforward(
-            cons_oop, adtype, x, ones(eltype(x), length(x)))
+            cons_oop, adtype, x, (ones(eltype(x), length(x)),))
         function cons_jvp!(J, θ, v)
-            pushforward!(cons_oop, J, prep_pushforward, adtype, θ, v)
+            only(pushforward!(cons_oop, (J,), prep_pushforward, adtype, θ, (v,)))
         end
     elseif cons_jvp == true && cons !== nothing
         cons_jvp! = (J, θ, v) -> f.cons_jvp(J, θ, v, p)
@@ -383,14 +383,14 @@ function instantiate_function(
     end
 
     if hv == true && f.hv === nothing
-        prep_hvp = prepare_hvp(_f, soadtype, x, zeros(eltype(x), size(x)))
+        prep_hvp = prepare_hvp(_f, soadtype, x, (zeros(eltype(x), size(x)),))
         function hv!(θ, v)
-            hvp(_f, prep_hvp, soadtype, θ, v)
+            only(hvp(_f, prep_hvp, soadtype, θ, (v)))
         end
         if p !== SciMLBase.NullParameters() && p !== nothing
             function hv!(θ, v, p)
                 global _p = p
-                hvp(_f, prep_hvp, soadtype, θ, v)
+                only(vp(_f, prep_hvp, soadtype, θ, (v,)))
             end
         end
     elseif hv == true
@@ -432,9 +432,9 @@ function instantiate_function(
     end
 
     if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
-        prep_pullback = prepare_pullback(cons, adtype, x, ones(eltype(x), num_cons))
+        prep_pullback = prepare_pullback(cons, adtype, x, (ones(eltype(x), num_cons),))
         function cons_vjp!(θ, v)
-            return pullback(cons, prep_pullback, adtype, θ, v)
+            return only(pullback(cons, prep_pullback, adtype, θ, (v,)))
         end
     elseif cons_vjp == true && cons !== nothing
         cons_vjp! = (θ, v) -> f.cons_vjp(θ, v, p)
@@ -444,9 +444,9 @@ function instantiate_function(
 
     if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
         prep_pushforward = prepare_pushforward(
-            cons, adtype, x, ones(eltype(x), length(x)))
+            cons, adtype, x, (ones(eltype(x), length(x)),))
         function cons_jvp!(θ, v)
-            return pushforward(cons, prep_pushforward, adtype, θ, v)
+            return only(pushforward(cons, prep_pushforward, adtype, θ, (v,)))
         end
     elseif cons_jvp == true && cons !== nothing
         cons_jvp! = (θ, v) -> f.cons_jvp(θ, v, p)
