@@ -16,9 +16,9 @@ using ADTypes, SciMLBase
 
 function generate_adtype(adtype)
     if !(adtype isa SciMLBase.NoAD) && ADTypes.mode(adtype) isa ADTypes.ForwardMode
-        soadtype = DifferentiationInterface.SecondOrder(adtype, AutoReverseDiff()) #make zygote?
+        soadtype = DifferentiationInterface.SecondOrder(adtype, AutoForwardDiff())
     elseif !(adtype isa SciMLBase.NoAD) && ADTypes.mode(adtype) isa ADTypes.ReverseMode
-        soadtype = DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype)
+        soadtype = DifferentiationInterface.SecondOrder(AutoReverseDiff(), adtype)
     else
         soadtype = adtype
     end
