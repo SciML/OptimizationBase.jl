@@ -18,8 +18,8 @@ using Core: Vararg
 end
 
 function inner_grad(θ, bθ, f, p)
-    Enzyme.autodiff_deferred(Enzyme.Reverse,
-        Const(firstapply),
+    Enzyme.autodiff(Enzyme.Reverse,
+        firstapply,
         Active,
         Const(f),
         Enzyme.Duplicated(θ, bθ),
@@ -29,9 +29,8 @@ function inner_grad(θ, bθ, f, p)
 end
 
 function inner_grad_primal(θ, bθ, f, p)
-    Enzyme.autodiff_deferred(Enzyme.ReverseWithPrimal,
-        Const(firstapply),
-        Active,
+    Enzyme.autodiff(Enzyme.ReverseWithPrimal,
+        firstapply,
         Const(f),
         Enzyme.Duplicated(θ, bθ),
         Const(p)
@@ -40,9 +39,8 @@ end
 
 function hv_f2_alloc(x, f, p)
     dx = Enzyme.make_zero(x)
-    Enzyme.autodiff_deferred(Enzyme.Reverse,
+    Enzyme.autodiff(Enzyme.Reverse,
         firstapply,
-        Active,
         Const(f),
         Enzyme.Duplicated(x, dx),
         Const(p)
@@ -58,7 +56,7 @@ function inner_cons(x, fcons::Function, p::Union{SciMLBase.NullParameters, Nothi
 end
 
 function cons_f2(x, dx, fcons, p, num_cons, i)
-    Enzyme.autodiff_deferred(Enzyme.Reverse, inner_cons, Active, Enzyme.Duplicated(x, dx),
+    Enzyme.autodiff(Enzyme.Reverse, inner_cons, Enzyme.Duplicated(x, dx),
         Const(fcons), Const(p), Const(num_cons), Const(i))
     return nothing
 end
@@ -70,8 +68,8 @@ function inner_cons_oop(
 end
 
 function cons_f2_oop(x, dx, fcons, p, i)
-    Enzyme.autodiff_deferred(
-        Enzyme.Reverse, inner_cons_oop, Active, Enzyme.Duplicated(x, dx),
+    Enzyme.autodiff(
+        Enzyme.Reverse, inner_cons_oop, Enzyme.Duplicated(x, dx),
         Const(fcons), Const(p), Const(i))
     return nothing
 end
@@ -83,7 +81,7 @@ function lagrangian(x, _f::Function, cons::Function, p, λ, σ = one(eltype(x)))
 end
 
 function lag_grad(x, dx, lagrangian::Function, _f::Function, cons::Function, p, σ, λ)
-    Enzyme.autodiff_deferred(Enzyme.Reverse, lagrangian, Active, Enzyme.Duplicated(x, dx),
+    Enzyme.autodiff(Enzyme.Reverse, lagrangian, Active, Enzyme.Duplicated(x, dx),
         Const(_f), Const(cons), Const(p), Const(λ), Const(σ))
     return nothing
 end
