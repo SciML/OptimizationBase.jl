@@ -14,17 +14,6 @@ import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp,
                                  hvp, jacobian, Constant
 using ADTypes, SciMLBase
 
-function generate_adtype(adtype)
-    if !(adtype isa SciMLBase.NoAD) && ADTypes.mode(adtype) isa ADTypes.ForwardMode
-        soadtype = DifferentiationInterface.SecondOrder(adtype, AutoReverseDiff()) #make zygote?
-    elseif !(adtype isa SciMLBase.NoAD) && ADTypes.mode(adtype) isa ADTypes.ReverseMode
-        soadtype = DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype)
-    else
-        soadtype = adtype
-    end
-    return adtype, soadtype
-end
-
 function instantiate_function(
         f::OptimizationFunction{true}, x, adtype::ADTypes.AbstractADType,
         p = SciMLBase.NullParameters(), num_cons = 0;
@@ -122,7 +111,10 @@ function instantiate_function(
         hv! = nothing
     end
 
-    if !(f.cons === nothing)
+    if f.cons === nothing
+        cons = nothing
+    else
+        cons = (res, x) -> f.cons(res, x, p)
         function cons_oop(x)
             _res = zeros(eltype(x), num_cons)
             f.cons(_res, x, p)
@@ -257,7 +249,7 @@ function instantiate_function(
 
     return OptimizationFunction{true}(f.f, adtype;
         grad = grad, fg = fg!, hess = hess, hv = hv!, fgh = fgh!,
-        cons = (res, x) -> f.cons(res, x, p), cons_j = cons_j!, cons_h = cons_h!,
+        cons = cons, cons_j = cons_j!, cons_h = cons_h!,
         cons_vjp = cons_vjp!, cons_jvp = cons_jvp!,
         hess_prototype = hess_sparsity,
         hess_colorvec = hess_colors,
@@ -379,7 +371,11 @@ function instantiate_function(
         hv! = nothing
     end
 
-    if !(f.cons === nothing)
+    if f.cons === nothing
+        cons = nothing
+    else
+        cons = Base.Fix2(f.cons, p)
+
         function lagrangian(θ, σ, λ, p)
             return σ * f.f(θ, p) + dot(λ, f.cons(θ, p))
         end
@@ -482,7 +478,7 @@ function instantiate_function(
 
     return OptimizationFunction{false}(f.f, adtype;
         grad = grad, fg = fg!, hess = hess, hv = hv!, fgh = fgh!,
-        cons = Base.Fix2(f.cons, p), cons_j = cons_j!, cons_h = cons_h!,
+        cons = cons, cons_j = cons_j!, cons_h = cons_h!,
         cons_vjp = cons_vjp!, cons_jvp = cons_jvp!,
         hess_prototype = hess_sparsity,
         hess_colorvec = hess_colors,

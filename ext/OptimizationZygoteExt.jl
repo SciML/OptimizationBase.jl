@@ -118,9 +118,7 @@ function OptimizationBase.instantiate_function(
     if f.cons === nothing
         cons = nothing
     else
-        function cons(res, θ)
-            return f.cons(res, θ, p)
-        end
+        cons = (res, θ) -> f.cons(res, θ, p)
 
         function cons_oop(x)
             _res = Zygote.Buffer(x, num_cons)
@@ -369,7 +367,8 @@ function OptimizationBase.instantiate_function(
     end
 
     if hv == true && f.hv === nothing
-        prep_hvp = prepare_hvp(_f, soadtype.dense_ad, x, zeros(eltype(x), size(x)))
+        prep_hvp = prepare_hvp(
+            f.f, soadtype.dense_ad, x, (zeros(eltype(x), size(x)),), Constant(p))
         function hv!(H, θ, v)
             hvp!(f.f, (H,), prep_hvp, soadtype.dense_ad, θ, (v,), Constant(p))
         end
@@ -387,9 +386,7 @@ function OptimizationBase.instantiate_function(
     if f.cons === nothing
         cons = nothing
     else
-        function cons(res, θ)
-            f.cons(res, θ, p)
-        end
+        cons = (res, θ) -> f.cons(res, θ, p)
 
         function cons_oop(x)
             _res = Zygote.Buffer(x, num_cons)
