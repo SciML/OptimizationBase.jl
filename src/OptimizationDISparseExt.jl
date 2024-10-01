@@ -12,118 +12,22 @@ import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp,
 using ADTypes
 using SparseConnectivityTracer, SparseMatrixColorings
 
-function generate_sparse_adtype(adtype)
-    if adtype.sparsity_detector isa ADTypes.NoSparsityDetector &&
-       adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
-        adtype = AutoSparse(adtype.dense_ad; sparsity_detector = TracerSparsityDetector(),
-            coloring_algorithm = GreedyColoringAlgorithm())
-        if adtype.dense_ad isa ADTypes.AutoFiniteDiff
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = GreedyColoringAlgorithm())
-        elseif !(adtype.dense_ad isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ForwardMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, AutoReverseDiff()),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = GreedyColoringAlgorithm()) #make zygote?
-        elseif !(adtype isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ReverseMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype.dense_ad),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = GreedyColoringAlgorithm())
-        end
-    elseif adtype.sparsity_detector isa ADTypes.NoSparsityDetector &&
-           !(adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm)
-        adtype = AutoSparse(adtype.dense_ad; sparsity_detector = TracerSparsityDetector(),
-            coloring_algorithm = adtype.coloring_algorithm)
-        if adtype.dense_ad isa ADTypes.AutoFiniteDiff
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = adtype.coloring_algorithm)
-        elseif !(adtype.dense_ad isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ForwardMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, AutoReverseDiff()),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = adtype.coloring_algorithm)
-        elseif !(adtype isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ReverseMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype.dense_ad),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = adtype.coloring_algorithm)
-        end
-    elseif !(adtype.sparsity_detector isa ADTypes.NoSparsityDetector) &&
-           adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
-        adtype = AutoSparse(adtype.dense_ad; sparsity_detector = adtype.sparsity_detector,
-            coloring_algorithm = GreedyColoringAlgorithm())
-        if adtype.dense_ad isa ADTypes.AutoFiniteDiff
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = GreedyColoringAlgorithm())
-        elseif !(adtype.dense_ad isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ForwardMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, AutoReverseDiff()),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = GreedyColoringAlgorithm())
-        elseif !(adtype isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ReverseMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype.dense_ad),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = GreedyColoringAlgorithm())
-        end
-    else
-        if adtype.dense_ad isa ADTypes.AutoFiniteDiff
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = adtype.coloring_algorithm)
-        elseif !(adtype.dense_ad isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ForwardMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, AutoReverseDiff()),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = adtype.coloring_algorithm)
-        elseif !(adtype isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ReverseMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype.dense_ad),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = adtype.coloring_algorithm)
-        end
-    end
-    return adtype, soadtype
-end
-
 function instantiate_function(
         f::OptimizationFunction{true}, x, adtype::ADTypes.AutoSparse{<:AbstractADType},
         p = SciMLBase.NullParameters(), num_cons = 0;
         g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
         lag_h = false)
-    global _p = p
-    function _f(θ)
-        return f.f(θ, _p)[1]
-    end
-
     adtype, soadtype = generate_sparse_adtype(adtype)
 
     if g == true && f.grad === nothing
-        extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
+        prep_grad = prepare_gradient(f.f, adtype.dense_ad, x, Constant(p))
         function grad(res, θ)
-            gradient!(_f, res, adtype.dense_ad, θ, extras_grad)
+            gradient!(f.f, res, prep_grad, adtype.dense_ad, θ, Constant(p))
         end
         if p !== SciMLBase.NullParameters()
             function grad(res, θ, p)
-                global _p = p
-                gradient!(_f, res, adtype.dense_ad, θ, extras_grad)
+                gradient!(f.f, res, prep_grad, adtype.dense_ad, θ, Constant(p))
             end
         end
     elseif g == true
@@ -134,16 +38,17 @@ function instantiate_function(
 
     if fg == true && f.fg === nothing
         if g == false
-            extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
+            prep_grad = prepare_gradient(f.f, adtype.dense_ad, x, Constant(p))
         end
         function fg!(res, θ)
-            (y, _) = value_and_gradient!(_f, res, adtype.dense_ad, θ, extras_grad)
+            (y, _) = value_and_gradient!(
+                f.f, res, prep_grad, adtype.dense_ad, θ, Constant(p))
             return y
         end
         if p !== SciMLBase.NullParameters()
             function fg!(res, θ, p)
-                global _p = p
-                (y, _) = value_and_gradient!(_f, res, adtype.dense_ad, θ, extras_grad)
+                (y, _) = value_and_gradient!(
+                    f.f, res, prep_grad, adtype.dense_ad, θ, Constant(p))
                 return y
             end
         end
@@ -156,17 +61,16 @@ function instantiate_function(
     hess_sparsity = f.hess_prototype
     hess_colors = f.hess_colorvec
     if f.hess === nothing && h == true
-        extras_hess = prepare_hessian(_f, soadtype, x) #placeholder logic, can be made much better
+        prep_hess = prepare_hessian(f.f, soadtype, x, Constant(p))
         function hess(res, θ)
-            hessian!(_f, res, soadtype, θ, extras_hess)
+            hessian!(f.f, res, prep_hess, soadtype, θ, Constant(p))
         end
-        hess_sparsity = extras_hess.coloring_result.S
-        hess_colors = extras_hess.coloring_result.color
+        hess_sparsity = prep_hess.coloring_result.S
+        hess_colors = prep_hess.coloring_result.color
 
         if p !== SciMLBase.NullParameters() && p !== nothing
             function hess(res, θ, p)
-                global _p = p
-                hessian!(_f, res, soadtype, θ, extras_hess)
+                hessian!(f.f, res, prep_hess, soadtype, θ, Constant(p))
             end
         end
     elseif h == true
@@ -177,14 +81,14 @@ function instantiate_function(
 
     if fgh == true && f.fgh === nothing
         function fgh!(G, H, θ)
-            (y, _, _) = value_derivative_and_second_derivative!(_f, G, H, θ, extras_hess)
+            (y, _, _) = value_derivative_and_second_derivative!(
+                f.f, G, H, prep_hess, soadtype.dense_ad, θ, Constant(p))
             return y
         end
         if p !== SciMLBase.NullParameters() && p !== nothing
             function fgh!(G, H, θ, p)
-                global _p = p
                 (y, _, _) = value_derivative_and_second_derivative!(
-                    _f, G, H, θ, extras_hess)
+                    f.f, G, H, prep_hess, soadtype.dense_ad, θ, Constant(p))
                 return y
             end
         end
@@ -195,14 +99,14 @@ function instantiate_function(
     end
 
     if hv == true && f.hv === nothing
-        extras_hvp = prepare_hvp(_f, soadtype.dense_ad, x, zeros(eltype(x), size(x)))
+        prep_hvp = prepare_hvp(
+            f.f, soadtype.dense_ad, x, (zeros(eltype(x), size(x)),), Constant(p))
         function hv!(H, θ, v)
-            hvp!(_f, H, soadtype.dense_ad, θ, v, extras_hvp)
+            only(hvp!(f.f, (H,), prep_hvp, soadtype.dense_ad, θ, (v,), Constant(p)))
         end
         if p !== SciMLBase.NullParameters() && p !== nothing
             function hv!(H, θ, v, p)
-                global _p = p
-                hvp!(_f, H, soadtype.dense_ad, θ, v, extras_hvp)
+                only(hvp!(f.f, (H,), prep_hvp, soadtype.dense_ad, θ, (v,), Constant(p)))
             end
         end
     elseif hv == true
@@ -214,61 +118,62 @@ function instantiate_function(
     if f.cons === nothing
         cons = nothing
     else
-        function cons(res, θ)
-            f.cons(res, θ, p)
-        end
+        cons = (res, θ) -> f.cons(res, θ, p)
 
-        function cons_oop(x, p = p)
+        function cons_oop(x)
             _res = zeros(eltype(x), num_cons)
             f.cons(_res, x, p)
             return _res
         end
 
-        function lagrangian(augvars)
-            θ = augvars[1:length(x)]
-            σ = augvars[length(x) + 1]
-            λ = augvars[(length(x) + 2):end]
-            return σ * _f(θ) + dot(λ, cons_oop(θ))
+        function cons_oop(x, i)
+            _res = zeros(eltype(x), num_cons)
+            f.cons(_res, x, p)
+            return _res[i]
+        end
+
+        function lagrangian(θ, σ, λ, p)
+            return σ * f.f(θ, p) + dot(λ, cons_oop(θ))
         end
     end
 
     cons_jac_prototype = f.cons_jac_prototype
     cons_jac_colorvec = f.cons_jac_colorvec
-    if cons !== nothing && cons_j == true && f.cons_j === nothing
-        extras_jac = prepare_jacobian(cons_oop, adtype, x)
+    if f.cons !== nothing && cons_j == true && f.cons_j === nothing
+        prep_jac = prepare_jacobian(cons_oop, adtype, x)
         function cons_j!(J, θ)
-            jacobian!(cons_oop, J, adtype, θ, extras_jac)
+            jacobian!(cons_oop, J, prep_jac, adtype, θ)
             if size(J, 1) == 1
                 J = vec(J)
             end
         end
-        cons_jac_prototype = extras_jac.coloring_result.S
-        cons_jac_colorvec = extras_jac.coloring_result.color
-    elseif cons_j === true && cons !== nothing
+        cons_jac_prototype = prep_jac.coloring_result.S
+        cons_jac_colorvec = prep_jac.coloring_result.color
+    elseif cons_j === true && f.cons !== nothing
         cons_j! = (J, θ) -> f.cons_j(J, θ, p)
     else
         cons_j! = nothing
     end
 
-    if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
-        extras_pullback = prepare_pullback(
-            cons_oop, adtype.dense_ad, x, ones(eltype(x), num_cons))
+    if f.cons_vjp === nothing && cons_vjp == true && f.cons !== nothing
+        prep_pullback = prepare_pullback(
+            cons_oop, adtype.dense_ad, x, (ones(eltype(x), num_cons),))
         function cons_vjp!(J, θ, v)
-            pullback!(cons_oop, J, adtype.dense_ad, θ, v, extras_pullback)
+            only(pullback!(cons_oop, (J,), prep_pullback, adtype.dense_ad, θ, (v,)))
         end
-    elseif cons_vjp === true && cons !== nothing
+    elseif cons_vjp === true && f.cons !== nothing
         cons_vjp! = (J, θ, v) -> f.cons_vjp(J, θ, v, p)
     else
         cons_vjp! = nothing
     end
 
-    if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
-        extras_pushforward = prepare_pushforward(
-            cons_oop, adtype.dense_ad, x, ones(eltype(x), length(x)))
+    if f.cons_jvp === nothing && cons_jvp == true && f.cons !== nothing
+        prep_pushforward = prepare_pushforward(
+            cons_oop, adtype.dense_ad, x, (ones(eltype(x), length(x)),))
         function cons_jvp!(J, θ, v)
-            pushforward!(cons_oop, J, adtype.dense_ad, θ, v, extras_pushforward)
+            only(pushforward!(cons_oop, (J,), prep_pushforward, adtype.dense_ad, θ, (v,)))
         end
-    elseif cons_jvp === true && cons !== nothing
+    elseif cons_jvp === true && f.cons !== nothing
         cons_jvp! = (J, θ, v) -> f.cons_jvp(J, θ, v, p)
     else
         cons_jvp! = nothing
@@ -276,21 +181,18 @@ function instantiate_function(
 
     conshess_sparsity = f.cons_hess_prototype
     conshess_colors = f.cons_hess_colorvec
-    if cons !== nothing && f.cons_h === nothing && cons_h == true
-        fncs = [@closure (x) -> cons_oop(x)[i] for i in 1:num_cons]
-        extras_cons_hess = Vector(undef, length(fncs))
-        for ind in 1:num_cons
-            extras_cons_hess[ind] = prepare_hessian(fncs[ind], soadtype, x)
-        end
-        colores = getfield.(extras_cons_hess, :coloring_result)
+    if f.cons !== nothing && f.cons_h === nothing && cons_h == true
+        prep_cons_hess = [prepare_hessian(cons_oop, soadtype, x, Constant(i))
+                          for i in 1:num_cons]
+        colores = getfield.(prep_cons_hess, :coloring_result)
         conshess_sparsity = getfield.(colores, :S)
         conshess_colors = getfield.(colores, :color)
         function cons_h!(H, θ)
             for i in 1:num_cons
-                hessian!(fncs[i], H[i], soadtype, θ, extras_cons_hess[i])
+                hessian!(cons_oop, H[i], prep_cons_hess[i], soadtype, θ, Constant(i))
             end
         end
-    elseif cons_h == true && cons !== nothing
+    elseif cons_h == true && f.cons !== nothing
         cons_h! = (res, θ) -> f.cons_h(res, θ, p)
     else
         cons_h! = nothing
@@ -298,25 +200,26 @@ function instantiate_function(
 
     lag_hess_prototype = f.lag_hess_prototype
     lag_hess_colors = f.lag_hess_colorvec
-    if cons !== nothing && lag_h == true && f.lag_h === nothing
-        lag_extras = prepare_hessian(
-            lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
-        lag_hess_prototype = lag_extras.coloring_result.S[1:length(x), 1:length(x)]
-        lag_hess_colors = lag_extras.coloring_result.color
+    if f.cons !== nothing && lag_h == true && f.lag_h === nothing
+        lag_prep = prepare_hessian(
+            lagrangian, soadtype, x, Constant(one(eltype(x))),
+            Constant(ones(eltype(x), num_cons)), Constant(p))
+        lag_hess_prototype = lag_prep.coloring_result.S
+        lag_hess_colors = lag_prep.coloring_result.color
 
         function lag_h!(H::AbstractMatrix, θ, σ, λ)
             if σ == zero(eltype(θ))
-                cons_h(H, θ)
+                cons_h!(H, θ)
                 H *= λ
             else
-                H .= hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
-                    1:length(θ), 1:length(θ)]
+                hessian!(lagrangian, H, lag_prep, soadtype, θ,
+                    Constant(σ), Constant(λ), Constant(p))
             end
         end
 
         function lag_h!(h, θ, σ, λ)
-            H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
-                1:length(θ), 1:length(θ)]
+            H = hessian(
+                lagrangian, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
             k = 0
             rows, cols, _ = findnz(H)
             for (i, j) in zip(rows, cols)
@@ -333,16 +236,14 @@ function instantiate_function(
                     cons_h(H, θ)
                     H *= λ
                 else
-                    global _p = p
-                    H .= hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
-                        1:length(θ), 1:length(θ)]
+                    hessian!(lagrangian, H, lag_prep, soadtype, θ,
+                        Constant(σ), Constant(λ), Constant(p))
                 end
             end
 
             function lag_h!(h, θ, σ, λ, p)
-                global _p = p
-                H = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
-                    1:length(θ), 1:length(θ)]
+                H = hessian(lagrangian, lag_prep, soadtype, θ,
+                    Constant(σ), Constant(λ), Constant(p))
                 k = 0
                 rows, cols, _ = findnz(H)
                 for (i, j) in zip(rows, cols)
@@ -391,22 +292,16 @@ function instantiate_function(
         g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
         lag_h = false)
-    global _p = p
-    function _f(θ)
-        return f(θ, _p)[1]
-    end
-
     adtype, soadtype = generate_sparse_adtype(adtype)
 
     if g == true && f.grad === nothing
-        extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
+        prep_grad = prepare_gradient(f.f, adtype.dense_ad, x, Constant(p))
         function grad(θ)
-            gradient(_f, adtype.dense_ad, θ, extras_grad)
+            gradient(f.f, prep_grad, adtype.dense_ad, θ, Constant(p))
         end
         if p !== SciMLBase.NullParameters() && p !== nothing
             function grad(θ, p)
-                global _p = p
-                gradient(_f, adtype.dense_ad, θ, extras_grad)
+                gradient(f.f, prep_grad, adtype.dense_ad, θ, Constant(p))
             end
         end
     elseif g == true
@@ -417,16 +312,15 @@ function instantiate_function(
 
     if fg == true && f.fg === nothing
         if g == false
-            extras_grad = prepare_gradient(_f, adtype.dense_ad, x)
+            prep_grad = prepare_gradient(f.f, adtype.dense_ad, x, Constant(p))
         end
         function fg!(θ)
-            (y, G) = value_and_gradient(_f, adtype.dense_ad, θ, extras_grad)
+            (y, G) = value_and_gradient(f.f, prep_grad, adtype.dense_ad, θ, Constant(p))
             return y, G
         end
         if p !== SciMLBase.NullParameters() && p !== nothing
             function fg!(θ, p)
-                global _p = p
-                (y, G) = value_and_gradient(_f, adtype.dense_ad, θ, extras_grad)
+                (y, G) = value_and_gradient(f.f, prep_grad, adtype.dense_ad, θ, Constant(p))
                 return y, G
             end
         end
@@ -438,15 +332,15 @@ function instantiate_function(
 
     if fgh == true && f.fgh === nothing
         function fgh!(θ)
-            (y, G, H) = value_derivative_and_second_derivative(_f, soadtype, θ, extras_hess)
+            (y, G, H) = value_derivative_and_second_derivative(
+                f.f, prep_hess, soadtype, θ, Constant(p))
             return y, G, H
         end
 
         if p !== SciMLBase.NullParameters() && p !== nothing
             function fgh!(θ, p)
-                global _p = p
                 (y, G, H) = value_derivative_and_second_derivative(
-                    _f, soadtype, θ, extras_hess)
+                    f.f, prep_hess, soadtype, θ, Constant(p))
                 return y, G, H
             end
         end
@@ -459,17 +353,16 @@ function instantiate_function(
     hess_sparsity = f.hess_prototype
     hess_colors = f.hess_colorvec
     if h == true && f.hess === nothing
-        extras_hess = prepare_hessian(_f, soadtype, x) #placeholder logic, can be made much better
+        prep_hess = prepare_hessian(f.f, soadtype, x, Constant(p))
         function hess(θ)
-            hessian(_f, soadtype, θ, extras_hess)
+            hessian(f.f, prep_hess, soadtype, θ, Constant(p))
         end
-        hess_sparsity = extras_hess.coloring_result.S
-        hess_colors = extras_hess.coloring_result.color
+        hess_sparsity = prep_hess.coloring_result.S
+        hess_colors = prep_hess.coloring_result.color
 
         if p !== SciMLBase.NullParameters() && p !== nothing
             function hess(θ, p)
-                global _p = p
-                hessian(_f, soadtype, θ, extras_hess)
+                hessian(f.f, prep_hess, soadtype, θ, Constant(p))
             end
         end
     elseif h == true
@@ -479,15 +372,15 @@ function instantiate_function(
     end
 
     if hv == true && f.hv === nothing
-        extras_hvp = prepare_hvp(_f, soadtype.dense_ad, x, zeros(eltype(x), size(x)))
+        prep_hvp = prepare_hvp(
+            f.f, soadtype.dense_ad, x, (zeros(eltype(x), size(x)),), Constant(p))
         function hv!(θ, v)
-            hvp(_f, soadtype.dense_ad, θ, v, extras_hvp)
+            only(hvp(f.f, prep_hvp, soadtype.dense_ad, θ, (v,), Constant(p)))
         end
 
         if p !== SciMLBase.NullParameters() && p !== nothing
             function hv!(θ, v, p)
-                global _p = p
-                hvp(_f, soadtype.dense_ad, θ, v, extras_hvp)
+                only(hvp(f.f, prep_hvp, soadtype.dense_ad, θ, (v,), Constant(p)))
             end
         end
     elseif hv == true
@@ -499,56 +392,52 @@ function instantiate_function(
     if f.cons === nothing
         cons = nothing
     else
-        function cons(θ)
-            f.cons(θ, p)
-        end
+        cons = Base.Fix2(f.cons, p)
 
-        function lagrangian(augvars)
-            θ = augvars[1:length(x)]
-            σ = augvars[length(x) + 1]
-            λ = augvars[(length(x) + 2):end]
-            return σ * _f(θ) + dot(λ, cons(θ))
+        function lagrangian(θ, σ, λ, p)
+            return σ * f.f(θ, p) + dot(λ, f.cons(θ, p))
         end
     end
 
     cons_jac_prototype = f.cons_jac_prototype
     cons_jac_colorvec = f.cons_jac_colorvec
-    if cons !== nothing && cons_j == true && f.cons_j === nothing
-        extras_jac = prepare_jacobian(cons, adtype, x)
+    if f.cons !== nothing && cons_j == true && f.cons_j === nothing
+        prep_jac = prepare_jacobian(f.cons, adtype, x, Constant(p))
         function cons_j!(θ)
-            J = jacobian(cons, adtype, θ, extras_jac)
+            J = jacobian(f.cons, prep_jac, adtype, θ, Constant(p))
             if size(J, 1) == 1
                 J = vec(J)
             end
             return J
         end
-        cons_jac_prototype = extras_jac.coloring_result.S
-        cons_jac_colorvec = extras_jac.coloring_result.color
-    elseif cons_j === true && cons !== nothing
+        cons_jac_prototype = prep_jac.coloring_result.S
+        cons_jac_colorvec = prep_jac.coloring_result.color
+    elseif cons_j === true && f.cons !== nothing
         cons_j! = (θ) -> f.cons_j(θ, p)
     else
         cons_j! = nothing
     end
 
-    if f.cons_vjp === nothing && cons_vjp == true && cons !== nothing
-        extras_pullback = prepare_pullback(
-            cons, adtype.dense_ad, x, ones(eltype(x), num_cons))
+    if f.cons_vjp === nothing && cons_vjp == true && f.cons !== nothing
+        prep_pullback = prepare_pullback(
+            f.cons, adtype.dense_ad, x, (ones(eltype(x), num_cons),), Constant(p))
         function cons_vjp!(θ, v)
-            pullback(cons, adtype.dense_ad, θ, v, extras_pullback)
+            only(pullback(f.cons, prep_pullback, adtype.dense_ad, θ, (v,), Constant(p)))
         end
-    elseif cons_vjp === true && cons !== nothing
+    elseif cons_vjp === true && f.cons !== nothing
         cons_vjp! = (θ, v) -> f.cons_vjp(θ, v, p)
     else
         cons_vjp! = nothing
     end
 
-    if f.cons_jvp === nothing && cons_jvp == true && cons !== nothing
-        extras_pushforward = prepare_pushforward(
-            cons, adtype.dense_ad, x, ones(eltype(x), length(x)))
+    if f.cons_jvp === nothing && cons_jvp == true && f.cons !== nothing
+        prep_pushforward = prepare_pushforward(
+            f.cons, adtype.dense_ad, x, (ones(eltype(x), length(x)),), Constant(p))
         function cons_jvp!(θ, v)
-            pushforward(cons, adtype.dense_ad, θ, v, extras_pushforward)
+            only(pushforward(
+                f.cons, prep_pushforward, adtype.dense_ad, θ, (v,), Constant(p)))
         end
-    elseif cons_jvp === true && cons !== nothing
+    elseif cons_jvp === true && f.cons !== nothing
         cons_jvp! = (θ, v) -> f.cons_jvp(θ, v, p)
     else
         cons_jvp! = nothing
@@ -556,20 +445,23 @@ function instantiate_function(
 
     conshess_sparsity = f.cons_hess_prototype
     conshess_colors = f.cons_hess_colorvec
-    if cons !== nothing && cons_h == true && f.cons_h === nothing
-        fncs = [(x) -> cons(x)[i] for i in 1:num_cons]
-        extras_cons_hess = prepare_hessian.(fncs, Ref(soadtype), Ref(x))
+    if f.cons !== nothing && cons_h == true && f.cons_h === nothing
+        function cons_i(x, i)
+            f.cons(x, p)[i]
+        end
+        prep_cons_hess = [prepare_hessian(cons_i, soadtype, x, Constant(i))
+                          for i in 1:num_cons]
 
         function cons_h!(θ)
             H = map(1:num_cons) do i
-                hessian(fncs[i], soadtype, θ, extras_cons_hess[i])
+                hessian(cons_i, prep_cons_hess[i], soadtype, θ, Constant(i))
             end
             return H
         end
-        colores = getfield.(extras_cons_hess, :coloring_result)
+        colores = getfield.(prep_cons_hess, :coloring_result)
         conshess_sparsity = getfield.(colores, :S)
         conshess_colors = getfield.(colores, :color)
-    elseif cons_h == true && cons !== nothing
+    elseif cons_h == true && f.cons !== nothing
         cons_h! = (res, θ) -> f.cons_h(res, θ, p)
     else
         cons_h! = nothing
@@ -577,39 +469,39 @@ function instantiate_function(
 
     lag_hess_prototype = f.lag_hess_prototype
     lag_hess_colors = f.lag_hess_colorvec
-    if cons !== nothing && lag_h == true && f.lag_h === nothing
-        lag_extras = prepare_hessian(
-            lagrangian, soadtype, vcat(x, [one(eltype(x))], ones(eltype(x), num_cons)))
+    if f.cons !== nothing && lag_h == true && f.lag_h === nothing
+        lag_prep = prepare_hessian(
+            lagrangian, soadtype, x, Constant(one(eltype(x))),
+            Constant(ones(eltype(x), num_cons)), Constant(p))
         function lag_h!(θ, σ, λ)
             if σ == zero(eltype(θ))
                 return λ .* cons_h!(θ)
             else
-                hess = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
-                    1:length(θ), 1:length(θ)]
+                hess = hessian(lagrangian, lag_prep, soadtype, θ,
+                    Constant(σ), Constant(λ), Constant(p))
                 return hess
             end
         end
-        lag_hess_prototype = lag_extras.coloring_result.S[1:length(θ), 1:length(θ)]
-        lag_hess_colors = lag_extras.coloring_result.color
+        lag_hess_prototype = lag_prep.coloring_result.S
+        lag_hess_colors = lag_prep.coloring_result.color
 
         if p !== SciMLBase.NullParameters() && p !== nothing
             function lag_h!(θ, σ, λ, p)
                 if σ == zero(eltype(θ))
                     return λ .* cons_h!(θ)
                 else
-                    global _p = p
-                    hess = hessian(lagrangian, soadtype, vcat(θ, [σ], λ), lag_extras)[
-                        1:length(θ), 1:length(θ)]
+                    hess = hessian(
+                        lagrangian, lag_prep, θ, Constant(σ), Constant(λ), Constant(p))
                     return hess
                 end
             end
         end
-    elseif lag_h == true && cons !== nothing
+    elseif lag_h == true && f.cons !== nothing
         lag_h! = (θ, σ, μ, p = p) -> f.lag_h(θ, σ, μ, p)
     else
         lag_h! = nothing
     end
-    return OptimizationFunction{true}(f.f, adtype;
+    return OptimizationFunction{false}(f.f, adtype;
         grad = grad, fg = fg!, hess = hess, hv = hv!, fgh = fgh!,
         cons = cons, cons_j = cons_j!, cons_h = cons_h!,
         cons_vjp = cons_vjp!, cons_jvp = cons_jvp!,
