@@ -131,12 +131,14 @@ function instantiate_function(
             prep_grad = prepare_gradient(f.f, adtype.dense_ad, x, Constant(p))
         end
         function fg!(res, θ)
-            (y, _) = value_and_gradient!(f.f, res, prep_grad, adtype.dense_ad, θ, Constant(p))
+            (y, _) = value_and_gradient!(
+                f.f, res, prep_grad, adtype.dense_ad, θ, Constant(p))
             return y
         end
         if p !== SciMLBase.NullParameters()
             function fg!(res, θ, p)
-                (y, _) = value_and_gradient!(f.f, res, prep_grad, adtype.dense_ad, θ, Constant(p))
+                (y, _) = value_and_gradient!(
+                    f.f, res, prep_grad, adtype.dense_ad, θ, Constant(p))
                 return y
             end
         end
@@ -187,7 +189,8 @@ function instantiate_function(
     end
 
     if hv == true && f.hv === nothing
-        prep_hvp = prepare_hvp(f.f, soadtype.dense_ad, x, (zeros(eltype(x), size(x)),), Constant(p))
+        prep_hvp = prepare_hvp(
+            f.f, soadtype.dense_ad, x, (zeros(eltype(x), size(x)),), Constant(p))
         function hv!(H, θ, v)
             only(hvp!(f.f, (H,), prep_hvp, soadtype.dense_ad, θ, (v,), Constant(p)))
         end
@@ -265,7 +268,8 @@ function instantiate_function(
     conshess_sparsity = f.cons_hess_prototype
     conshess_colors = f.cons_hess_colorvec
     if f.cons !== nothing && f.cons_h === nothing && cons_h == true
-        prep_cons_hess = [prepare_hessian(cons_oop, soadtype, x, Constant(i)) for i in 1:num_cons]
+        prep_cons_hess = [prepare_hessian(cons_oop, soadtype, x, Constant(i))
+                          for i in 1:num_cons]
         colores = getfield.(prep_cons_hess, :coloring_result)
         conshess_sparsity = getfield.(colores, :S)
         conshess_colors = getfield.(colores, :color)
@@ -284,7 +288,8 @@ function instantiate_function(
     lag_hess_colors = f.lag_hess_colorvec
     if f.cons !== nothing && lag_h == true && f.lag_h === nothing
         lag_prep = prepare_hessian(
-            lagrangian, soadtype, x, Constant(one(eltype(x))), Constant(ones(eltype(x), num_cons)), Constant(p))
+            lagrangian, soadtype, x, Constant(one(eltype(x))),
+            Constant(ones(eltype(x), num_cons)), Constant(p))
         lag_hess_prototype = lag_prep.coloring_result.S
         lag_hess_colors = lag_prep.coloring_result.color
 
@@ -293,12 +298,14 @@ function instantiate_function(
                 cons_h!(H, θ)
                 H *= λ
             else
-                hessian!(lagrangian, H, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
+                hessian!(lagrangian, H, lag_prep, soadtype, θ,
+                    Constant(σ), Constant(λ), Constant(p))
             end
         end
 
         function lag_h!(h, θ, σ, λ)
-            H = hessian(lagrangian, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
+            H = hessian(
+                lagrangian, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
             k = 0
             rows, cols, _ = findnz(H)
             for (i, j) in zip(rows, cols)
@@ -315,12 +322,14 @@ function instantiate_function(
                     cons_h(H, θ)
                     H *= λ
                 else
-                    hessian!(lagrangian, H, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
+                    hessian!(lagrangian, H, lag_prep, soadtype, θ,
+                        Constant(σ), Constant(λ), Constant(p))
                 end
             end
 
             function lag_h!(h, θ, σ, λ, p)
-                H = hessian(lagrangian, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
+                H = hessian(lagrangian, lag_prep, soadtype, θ,
+                    Constant(σ), Constant(λ), Constant(p))
                 k = 0
                 rows, cols, _ = findnz(H)
                 for (i, j) in zip(rows, cols)
@@ -369,7 +378,6 @@ function instantiate_function(
         g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
         lag_h = false)
-
     adtype, soadtype = generate_sparse_adtype(adtype)
 
     if g == true && f.grad === nothing
@@ -410,7 +418,8 @@ function instantiate_function(
 
     if fgh == true && f.fgh === nothing
         function fgh!(θ)
-            (y, G, H) = value_derivative_and_second_derivative(f.f, prep_hess, soadtype, θ, Constant(p))
+            (y, G, H) = value_derivative_and_second_derivative(
+                f.f, prep_hess, soadtype, θ, Constant(p))
             return y, G, H
         end
 
@@ -449,7 +458,8 @@ function instantiate_function(
     end
 
     if hv == true && f.hv === nothing
-        prep_hvp = prepare_hvp(f.f, soadtype.dense_ad, x, (zeros(eltype(x), size(x)),), Constant(p))
+        prep_hvp = prepare_hvp(
+            f.f, soadtype.dense_ad, x, (zeros(eltype(x), size(x)),), Constant(p))
         function hv!(θ, v)
             only(hvp(f.f, prep_hvp, soadtype.dense_ad, θ, (v,), Constant(p)))
         end
@@ -506,7 +516,8 @@ function instantiate_function(
         prep_pushforward = prepare_pushforward(
             f.cons, adtype.dense_ad, x, (ones(eltype(x), length(x)),), Constant(p))
         function cons_jvp!(θ, v)
-            only(pushforward(f.cons, prep_pushforward, adtype.dense_ad, θ, (v,), Constant(p)))
+            only(pushforward(
+                f.cons, prep_pushforward, adtype.dense_ad, θ, (v,), Constant(p)))
         end
     elseif cons_jvp === true && f.cons !== nothing
         cons_jvp! = (θ, v) -> f.cons_jvp(θ, v, p)
@@ -520,7 +531,8 @@ function instantiate_function(
         function cons_i(x, i)
             f.cons(x, p)[i]
         end
-        prep_cons_hess = [prepare_hessian(cons_i, soadtype, x, Constant(i)) for i in 1:num_cons]
+        prep_cons_hess = [prepare_hessian(cons_i, soadtype, x, Constant(i))
+                          for i in 1:num_cons]
 
         function cons_h!(θ)
             H = map(1:num_cons) do i
@@ -541,12 +553,14 @@ function instantiate_function(
     lag_hess_colors = f.lag_hess_colorvec
     if f.cons !== nothing && lag_h == true && f.lag_h === nothing
         lag_prep = prepare_hessian(
-            lagrangian, soadtype, x, Constant(one(eltype(x))), Constant(ones(eltype(x), num_cons)), Constant(p))
+            lagrangian, soadtype, x, Constant(one(eltype(x))),
+            Constant(ones(eltype(x), num_cons)), Constant(p))
         function lag_h!(θ, σ, λ)
             if σ == zero(eltype(θ))
                 return λ .* cons_h!(θ)
             else
-                hess = hessian(lagrangian, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
+                hess = hessian(lagrangian, lag_prep, soadtype, θ,
+                    Constant(σ), Constant(λ), Constant(p))
                 return hess
             end
         end
@@ -558,7 +572,8 @@ function instantiate_function(
                 if σ == zero(eltype(θ))
                     return λ .* cons_h!(θ)
                 else
-                    hess = hessian(lagrangian, lag_prep, θ, Constant(σ), Constant(λ), Constant(p))
+                    hess = hessian(
+                        lagrangian, lag_prep, θ, Constant(σ), Constant(λ), Constant(p))
                     return hess
                 end
             end
@@ -570,7 +585,7 @@ function instantiate_function(
     end
     return OptimizationFunction{false}(f.f, adtype;
         grad = grad, fg = fg!, hess = hess, hv = hv!, fgh = fgh!,
-        cons =  Base.Fix2(f.cons, p), cons_j = cons_j!, cons_h = cons_h!,
+        cons = Base.Fix2(f.cons, p), cons_j = cons_j!, cons_h = cons_h!,
         cons_vjp = cons_vjp!, cons_jvp = cons_jvp!,
         hess_prototype = hess_sparsity,
         hess_colorvec = hess_colors,

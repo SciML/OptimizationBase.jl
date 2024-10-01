@@ -31,11 +31,10 @@ function instantiate_function(
         g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
         lag_h = false)
-
     adtype, soadtype = generate_adtype(adtype)
 
     if g == true && f.grad === nothing
-        prep_grad = prepare_gradient(f.f, adtype, x,  Constant(p))
+        prep_grad = prepare_gradient(f.f, adtype, x, Constant(p))
         function grad(res, θ)
             gradient!(f.f, res, prep_grad, adtype, θ, Constant(p))
         end
@@ -183,7 +182,8 @@ function instantiate_function(
     conshess_sparsity = f.cons_hess_prototype
     conshess_colors = f.cons_hess_colorvec
     if f.cons !== nothing && f.cons_h === nothing && cons_h == true
-        prep_cons_hess = [prepare_hessian(cons_oop, soadtype, x, Constant(i)) for i in 1:num_cons]
+        prep_cons_hess = [prepare_hessian(cons_oop, soadtype, x, Constant(i))
+                          for i in 1:num_cons]
 
         function cons_h!(H, θ)
             for i in 1:num_cons
@@ -200,7 +200,8 @@ function instantiate_function(
 
     if f.cons !== nothing && lag_h == true && f.lag_h === nothing
         lag_prep = prepare_hessian(
-            lagrangian, soadtype, x, Constant(one(eltype(x))), Constant(ones(eltype(x), num_cons)), Constant(p))
+            lagrangian, soadtype, x, Constant(one(eltype(x))),
+            Constant(ones(eltype(x), num_cons)), Constant(p))
         lag_hess_prototype = zeros(Bool, num_cons, length(x))
 
         function lag_h!(H::AbstractMatrix, θ, σ, λ)
@@ -208,12 +209,14 @@ function instantiate_function(
                 cons_h!(H, θ)
                 H *= λ
             else
-                hessian!(lagrangian, H, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
+                hessian!(lagrangian, H, lag_prep, soadtype, θ,
+                    Constant(σ), Constant(λ), Constant(p))
             end
         end
 
         function lag_h!(h::AbstractVector, θ, σ, λ)
-            H = hessian(lagrangian, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
+            H = hessian(
+                lagrangian, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
             k = 0
             for i in 1:length(θ)
                 for j in 1:i
@@ -229,12 +232,14 @@ function instantiate_function(
                     cons_h!(H, θ)
                     H *= λ
                 else
-                    hessian!(lagrangian, H, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
+                    hessian!(lagrangian, H, lag_prep, soadtype, θ,
+                        Constant(σ), Constant(λ), Constant(p))
                 end
             end
 
             function lag_h!(h::AbstractVector, θ, σ, λ, p)
-                H = hessian(lagrangian, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p)) 
+                H = hessian(lagrangian, lag_prep, soadtype, θ,
+                    Constant(σ), Constant(λ), Constant(p))
                 k = 0
                 for i in 1:length(θ)
                     for j in 1:i
@@ -341,12 +346,14 @@ function instantiate_function(
 
     if fgh == true && f.fgh === nothing
         function fgh!(θ)
-            (y, G, H) = value_derivative_and_second_derivative(f.f, prep_hess, adtype, θ, Constant(p))
+            (y, G, H) = value_derivative_and_second_derivative(
+                f.f, prep_hess, adtype, θ, Constant(p))
             return y, G, H
         end
         if p !== SciMLBase.NullParameters() && p !== nothing
             function fgh!(θ, p)
-                (y, G, H) = value_derivative_and_second_derivative(f.f, prep_hess, adtype, θ, Constant(p))
+                (y, G, H) = value_derivative_and_second_derivative(
+                    f.f, prep_hess, adtype, θ, Constant(p))
                 return y, G, H
             end
         end
@@ -396,7 +403,8 @@ function instantiate_function(
     end
 
     if f.cons_vjp === nothing && cons_vjp == true && f.cons !== nothing
-        prep_pullback = prepare_pullback(f.cons, adtype, x, (ones(eltype(x), num_cons),), Constant(p))
+        prep_pullback = prepare_pullback(
+            f.cons, adtype, x, (ones(eltype(x), num_cons),), Constant(p))
         function cons_vjp!(θ, v)
             return only(pullback(f.cons, prep_pullback, adtype, θ, (v,), Constant(p)))
         end
@@ -424,7 +432,8 @@ function instantiate_function(
         function cons_i(x, i)
             return f.cons(x, p)[i]
         end
-        prep_cons_hess = [prepare_hessian(cons_i, soadtype, x, Constant(i)) for i in 1:num_cons]
+        prep_cons_hess = [prepare_hessian(cons_i, soadtype, x, Constant(i))
+                          for i in 1:num_cons]
 
         function cons_h!(θ)
             H = map(1:num_cons) do i
@@ -442,14 +451,16 @@ function instantiate_function(
 
     if f.cons !== nothing && lag_h == true && f.lag_h === nothing
         lag_prep = prepare_hessian(
-            lagrangian, soadtype, x, Constant(one(eltype(x))), Constant(ones(eltype(x), num_cons)), Constant(p))
+            lagrangian, soadtype, x, Constant(one(eltype(x))),
+            Constant(ones(eltype(x), num_cons)), Constant(p))
         lag_hess_prototype = zeros(Bool, num_cons, length(x))
 
         function lag_h!(θ, σ, λ)
             if σ == zero(eltype(θ))
                 return λ .* cons_h(θ)
             else
-                return hessian(lagrangian, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
+                return hessian(lagrangian, lag_prep, soadtype, θ,
+                    Constant(σ), Constant(λ), Constant(p))
             end
         end
 
@@ -458,7 +469,8 @@ function instantiate_function(
                 if σ == zero(eltype(θ))
                     return λ .* cons_h(θ)
                 else
-                    return hessian(lagrangian, lag_prep, soadtype, θ, Constant(σ), Constant(λ), Constant(p))
+                    return hessian(lagrangian, lag_prep, soadtype, θ,
+                        Constant(σ), Constant(λ), Constant(p))
                 end
             end
         end

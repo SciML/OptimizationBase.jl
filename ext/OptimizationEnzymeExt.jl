@@ -58,7 +58,8 @@ function inner_cons(x, fcons::Function, p::Union{SciMLBase.NullParameters, Nothi
 end
 
 function cons_f2(x, dx, fcons, p, num_cons, i)
-    Enzyme.autodiff_deferred(Enzyme.Reverse, Const(inner_cons), Active, Enzyme.Duplicated(x, dx),
+    Enzyme.autodiff_deferred(
+        Enzyme.Reverse, Const(inner_cons), Active, Enzyme.Duplicated(x, dx),
         Const(fcons), Const(p), Const(num_cons), Const(i))
     return nothing
 end
@@ -83,7 +84,8 @@ function lagrangian(x, _f::Function, cons::Function, p, λ, σ = one(eltype(x)))
 end
 
 function lag_grad(x, dx, lagrangian::Function, _f::Function, cons::Function, p, σ, λ)
-    Enzyme.autodiff_deferred(Enzyme.Reverse, Const(lagrangian), Active, Enzyme.Duplicated(x, dx),
+    Enzyme.autodiff_deferred(
+        Enzyme.Reverse, Const(lagrangian), Active, Enzyme.Duplicated(x, dx),
         Const(_f), Const(cons), Const(p), Const(λ), Const(σ))
     return nothing
 end

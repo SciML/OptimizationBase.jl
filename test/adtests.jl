@@ -1110,7 +1110,7 @@ using MLUtils
     optf = OptimizationBase.instantiate_function(
         optf, rand(3), AutoForwardDiff(), iterate(data)[1], g = true, fg = true)
     G0 = zeros(3)
-    optf.grad(G0, ones(3), (x0,y0))
+    optf.grad(G0, ones(3), (x0, y0))
     stochgrads = []
     i = 0
     for (x, y) in data
@@ -1159,7 +1159,7 @@ using MLUtils
     optf = OptimizationBase.instantiate_function(
         optf, rand(3), AutoEnzyme(), iterate(data)[1], g = true, fg = true)
     G0 = zeros(3)
-    @test_broken optf.grad(G0, ones(3), (x,y))
+    @test_broken optf.grad(G0, ones(3), (x, y))
     stochgrads = []
     # for (x,y) in data
     #     G = zeros(3)
