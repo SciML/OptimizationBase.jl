@@ -739,7 +739,7 @@ end
 
     # Instantiate the optimization problem
     optprob = OptimizationBase.instantiate_function(optf, x0,
-        OptimizationBase.AutoSparseForwardDiff(),
+        OptimizationBase.AutoSparseZygote(),
         nothing, 2, g = true, h = true, cons_j = true, cons_h = true, lag_h = true)
     # Test gradient
     G = zeros(3)
