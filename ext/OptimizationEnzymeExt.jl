@@ -18,8 +18,8 @@ using Core: Vararg
 end
 
 function inner_grad(θ, bθ, f, p)
-    Enzyme.autodiff(Enzyme.Reverse,
-        firstapply,
+    Enzyme.autodiff_deferred(Enzyme.Reverse,
+        Const(firstapply),
         Active,
         Const(f),
         Enzyme.Duplicated(θ, bθ),
@@ -29,8 +29,9 @@ function inner_grad(θ, bθ, f, p)
 end
 
 function inner_grad_primal(θ, bθ, f, p)
-    Enzyme.autodiff(Enzyme.ReverseWithPrimal,
-        firstapply,
+    Enzyme.autodiff_deferred(Enzyme.ReverseWithPrimal,
+        Const(firstapply),
+        Active,
         Const(f),
         Enzyme.Duplicated(θ, bθ),
         Const(p)
@@ -39,8 +40,9 @@ end
 
 function hv_f2_alloc(x, f, p)
     dx = Enzyme.make_zero(x)
-    Enzyme.autodiff(Enzyme.Reverse,
-        firstapply,
+    Enzyme.autodiff_deferred(Enzyme.Reverse,
+        Const(firstapply),
+        Active,
         Const(f),
         Enzyme.Duplicated(x, dx),
         Const(p)
@@ -56,7 +58,7 @@ function inner_cons(x, fcons::Function, p::Union{SciMLBase.NullParameters, Nothi
 end
 
 function cons_f2(x, dx, fcons, p, num_cons, i)
-    Enzyme.autodiff(Enzyme.Reverse, inner_cons, Enzyme.Duplicated(x, dx),
+    Enzyme.autodiff_deferred(Enzyme.Reverse, Const(inner_cons), Active, Enzyme.Duplicated(x, dx),
         Const(fcons), Const(p), Const(num_cons), Const(i))
     return nothing
 end
@@ -68,8 +70,8 @@ function inner_cons_oop(
 end
 
 function cons_f2_oop(x, dx, fcons, p, i)
-    Enzyme.autodiff(
-        Enzyme.Reverse, inner_cons_oop, Enzyme.Duplicated(x, dx),
+    Enzyme.autodiff_deferred(
+        Enzyme.Reverse, Const(inner_cons_oop), Active, Enzyme.Duplicated(x, dx),
         Const(fcons), Const(p), Const(i))
     return nothing
 end
@@ -81,7 +83,7 @@ function lagrangian(x, _f::Function, cons::Function, p, λ, σ = one(eltype(x)))
 end
 
 function lag_grad(x, dx, lagrangian::Function, _f::Function, cons::Function, p, σ, λ)
-    Enzyme.autodiff(Enzyme.Reverse, lagrangian, Active, Enzyme.Duplicated(x, dx),
+    Enzyme.autodiff_deferred(Enzyme.Reverse, Const(lagrangian), Active, Enzyme.Duplicated(x, dx),
         Const(_f), Const(cons), Const(p), Const(λ), Const(σ))
     return nothing
 end
@@ -185,7 +187,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     if hv == true && f.hv === nothing
         function hv!(H, θ, v, p = p)
             H .= Enzyme.autodiff(
-                Enzyme.Forward, hv_f2_alloc, DuplicatedNoNeed, Duplicated(θ, v),
+                Enzyme.Forward, hv_f2_alloc, Duplicated(θ, v),
                 Const(f.f), Const(p)
             )[1]
         end
@@ -529,7 +531,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
             for i in eachindex(Jaccache)
                 Enzyme.make_zero!(Jaccache[i])
             end
-            y, Jaccache = Enzyme.autodiff(Enzyme.Forward, f.cons, Duplicated,
+            Jaccache, y = Enzyme.autodiff(Enzyme.ForwardWithPrimal, f.cons, Duplicated,
                 BatchDuplicated(θ, seeds), Const(p))
             if size(y, 1) == 1
                 return reduce(vcat, Jaccache)
