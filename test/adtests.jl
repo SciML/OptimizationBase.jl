@@ -202,7 +202,7 @@ optprob.cons_h(H3, x0)
     optprob.cons(res, x0)
     @test res == [0.0]
     J = Array{Float64}(undef, 2)
-    @test optprob.cons_j(J, [5.0, 3.0])
+    optprob.cons_j(J, [5.0, 3.0])
     @test J == [10.0, 6.0]
     vJ = Array{Float64}(undef, 2)
     optprob.cons_vjp(vJ, [5.0, 3.0], [1.0])

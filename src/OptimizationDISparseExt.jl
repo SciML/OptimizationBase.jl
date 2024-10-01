@@ -210,9 +210,8 @@ function instantiate_function(
         end
 
         function cons_oop(x, i)
-            _res = zeros(eltype(x))
+            _res = zeros(eltype(x), num_cons)
             f.cons(_res, x, p)
-            @show _res
             return _res[i]
         end
 

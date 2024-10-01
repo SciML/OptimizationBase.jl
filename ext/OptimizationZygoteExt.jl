@@ -101,11 +101,11 @@ function OptimizationBase.instantiate_function(
     if hv == true && f.hv === nothing
         prep_hvp = prepare_hvp(f.f, soadtype, x, (zeros(eltype(x), size(x)),), Constant(p))
         function hv!(H, θ, v)
-            hvp!(f.f, H, prep_hvp, soadtype, θ, (v,), Constant(p))
+            hvp!(f.f, (H,), prep_hvp, soadtype, θ, (v,), Constant(p))
         end
         if p !== SciMLBase.NullParameters() && p !== nothing
             function hv!(H, θ, v, p)
-                hvp!(f.f, H, prep_hvp, soadtype, θ, (v,), Constant(p))
+                hvp!(f.f, (H,), prep_hvp, soadtype, θ, (v,), Constant(p))
             end
         end
     elseif hv == true
@@ -141,9 +141,9 @@ function OptimizationBase.instantiate_function(
     cons_jac_prototype = f.cons_jac_prototype
     cons_jac_colorvec = f.cons_jac_colorvec
     if cons !== nothing && cons_j == true && f.cons_j === nothing
-        prep_jac = prepare_jacobian(cons_oop, adtype, x, Constant(p))
+        prep_jac = prepare_jacobian(cons_oop, adtype, x)
         function cons_j!(J, θ)
-            jacobian!(cons_oop, J, prep_jac, adtype, θ, Constant(p))
+            jacobian!(cons_oop, J, prep_jac, adtype, θ)
             if size(J, 1) == 1
                 J = vec(J)
             end
