@@ -9,11 +9,6 @@ if !isdefined(Base, :get_extension)
 end
 
 using ArrayInterface, Base.Iterators, SparseArrays, LinearAlgebra
-using SymbolicIndexingInterface
-using SymbolicAnalysis
-using SymbolicAnalysis: AnalysisResult
-import Symbolics
-import Symbolics: variable, Equation, Inequality, unwrap, @variables
 import SciMLBase: OptimizationProblem,
                   OptimizationFunction, ObjSense,
                   MaxSense, MinSense, OptimizationStats
@@ -31,6 +26,7 @@ Base.iterate(::NullData, i = 1) = nothing
 Base.length(::NullData) = 0
 
 include("adtypes.jl")
+include("symify.jl")
 include("cache.jl")
 include("OptimizationDIExt.jl")
 include("OptimizationDISparseExt.jl")

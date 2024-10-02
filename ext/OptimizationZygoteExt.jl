@@ -332,7 +332,7 @@ function OptimizationBase.instantiate_function(
         function hess(res, θ)
             hessian!(f.f, res, prep_hess, soadtype, θ, Constant(p))
         end
-        hess_sparsity = prep_hess.coloring_result.S
+        hess_sparsity = prep_hess.coloring_result.A
         hess_colors = prep_hess.coloring_result.color
 
         if p !== SciMLBase.NullParameters() && p !== nothing
@@ -415,7 +415,7 @@ function OptimizationBase.instantiate_function(
                 J = vec(J)
             end
         end
-        cons_jac_prototype = prep_jac.coloring_result.S
+        cons_jac_prototype = prep_jac.coloring_result.A
         cons_jac_colorvec = prep_jac.coloring_result.color
     elseif cons !== nothing && cons_j == true
         cons_j! = (J, θ) -> f.cons_j(J, θ, p)
@@ -455,7 +455,7 @@ function OptimizationBase.instantiate_function(
         prep_cons_hess = [prepare_hessian(cons_oop, soadtype, x, Constant(i))
                           for i in 1:num_cons]
         colores = getfield.(prep_cons_hess, :coloring_result)
-        conshess_sparsity = getfield.(colores, :S)
+        conshess_sparsity = getfield.(colores, :A)
         conshess_colors = getfield.(colores, :color)
         function cons_h!(H, θ)
             for i in 1:num_cons
@@ -474,7 +474,7 @@ function OptimizationBase.instantiate_function(
         lag_extras = prepare_hessian(
             lagrangian, soadtype, x, Constant(one(eltype(x))),
             Constant(ones(eltype(x), num_cons)), Constant(p))
-        lag_hess_prototype = lag_extras.coloring_result.S
+        lag_hess_prototype = lag_extras.coloring_result.A
         lag_hess_colors = lag_extras.coloring_result.color
 
         function lag_h!(H::AbstractMatrix, θ, σ, λ)
