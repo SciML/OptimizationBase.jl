@@ -4,7 +4,11 @@ using OptimizationBase, SciMLBase, SymbolicAnalysis, SymbolicAnalysis.Symbolics
 using SymbolicAnalysis: AnalysisResult
 import Symbolics: variable, Equation, Inequality, unwrap, @variables
 
-function OptimizationBase.symify_cache(f::OptimizationFunction{iip, AD, F, G, FG, H, FGH, HV, C, CJ, CJV, CVJ, CH, HP, CJP, CHP, O, EX, CEX, SYS, LH, LHP, HCV, CJCV, CHCV, LHCV}, prob) where {iip, AD, F, G, FG, H, FGH, HV, C, CJ, CJV, CVJ, CH, HP, CJP, CHP, O, EX <: Nothing, CEX <: Nothing, SYS, LH, LHP, HCV, CJCV, CHCV, LHCV}
+function OptimizationBase.symify_cache(
+        f::OptimizationFunction{iip, AD, F, G, FG, H, FGH, HV, C, CJ, CJV, CVJ, CH, HP,
+            CJP, CHP, O, EX, CEX, SYS, LH, LHP, HCV, CJCV, CHCV, LHCV},
+        prob) where {iip, AD, F, G, FG, H, FGH, HV, C, CJ, CJV, CVJ, CH, HP, CJP, CHP, O,
+        EX <: Nothing, CEX <: Nothing, SYS, LH, LHP, HCV, CJCV, CHCV, LHCV}
     try
         vars = if prob.u0 isa Matrix
             @variables X[1:size(prob.u0, 1), 1:size(prob.u0, 2)]

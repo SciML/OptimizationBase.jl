@@ -32,7 +32,6 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
         structural_analysis = false,
         manifold = nothing,
         kwargs...)
-
     if isa_dataiterator(prob.p)
         reinit_cache = OptimizationBase.ReInitCache(prob.u0, iterate(prob.p)[1])
         reinit_cache_passedon = OptimizationBase.ReInitCache(prob.u0, prob.p)
