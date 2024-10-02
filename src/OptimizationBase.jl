@@ -31,6 +31,7 @@ Base.iterate(::NullData, i = 1) = nothing
 Base.length(::NullData) = 0
 
 include("adtypes.jl")
+include("symify.jl")
 include("cache.jl")
 include("OptimizationDIExt.jl")
 include("OptimizationDISparseExt.jl")
