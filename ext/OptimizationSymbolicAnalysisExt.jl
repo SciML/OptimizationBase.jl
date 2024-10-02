@@ -1,6 +1,8 @@
 module OptimizationSymbolicAnalysisExt
 
 using OptimizationBase, SciMLBase, SymbolicAnalysis, SymbolicAnalysis.Symbolics
+using SymbolicAnalysis: AnalysisResult
+import Symbolics: variable, Equation, Inequality, unwrap, @variables
 
 function OptimizationBase.symify_cache(f::OptimizationFunction{iip, AD, F, G, FG, H, FGH, HV, C, CJ, CJV, CVJ, CH, HP, CJP, CHP, O, EX, CEX, SYS, LH, LHP, HCV, CJCV, CHCV, LHCV}, prob) where {iip, AD, F, G, FG, H, FGH, HV, C, CJ, CJV, CVJ, CH, HP, CJP, CHP, O, EX <: Nothing, CEX <: Nothing, SYS, LH, LHP, HCV, CJCV, CHCV, LHCV}
     try

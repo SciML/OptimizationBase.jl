@@ -1,10 +1,8 @@
-import Symbolics: ≲, ~
-
 isa_dataiterator(data) = false
 
-struct AnalysisResults
-    objective::Union{Nothing, AnalysisResult}
-    constraints::Union{Nothing, Vector{AnalysisResult}}
+struct AnalysisResults{O, C}
+    objective::O
+    constraints::C
 end
 
 struct OptimizationCache{F, RC, LB, UB, LC, UC, S, O, P, C, M} <:
@@ -39,7 +37,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
         reinit_cache = OptimizationBase.ReInitCache(prob.u0, iterate(prob.p)[1])
         reinit_cache_passedon = OptimizationBase.ReInitCache(prob.u0, prob.p)
     else
-        reinit_cache = OptimizationBase.ReInitCache(prob.u0, iterate(prob.p)[1])
+        reinit_cache = OptimizationBase.ReInitCache(prob.u0, prob.p)
         reinit_cache_passedon = reinit_cache
     end
 
