@@ -78,7 +78,7 @@ using Test, ReverseDiff
         Omega_mc = rand(4, 4) .> 0.5  # Mask for observed entries (boolean matrix)
         X_mc = rand(4, 4)  # Matrix to be completed
         optf = OptimizationFunction{false}(
-            matrix_completion_objective, adtype, cons = rank_constraint)
+            matrix_completion_objective, adtype)
         optf = OptimizationBase.instantiate_function(
             optf, X_mc, adtype, (A_mc, Omega_mc), g = true, h = true)
         optf.grad(X_mc)

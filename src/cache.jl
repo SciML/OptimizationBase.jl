@@ -50,7 +50,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
         cons_vjp = SciMLBase.allowsconsjvp(opt), cons_jvp = SciMLBase.allowsconsjvp(opt), lag_h = SciMLBase.requireslagh(opt))
 
     if structural_analysis
-        obj_res, cons_res = symify_cache(f, prob, manifold)
+        obj_res, cons_res = symify_cache(f, prob, num_cons, manifold)
     else
         obj_res = nothing
         cons_res = nothing
