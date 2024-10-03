@@ -1,6 +1,3 @@
-function symify_cache(f::OptimizationFunction, prob)
-    obj_expr = f.expr
-    cons_expr = f.cons_expr === nothing ? nothing : getfield.(f.cons_expr, Ref(:lhs))
-
-    return obj_expr, cons_expr
+function symify_cache(f::OptimizationFunction, prob, manifold)
+    throw("Structural analysis requires SymbolicAnalysis.jl to be loaded, either add `using SymbolicAnalysis` to your script or set `structural_analysis = false`.")
 end
