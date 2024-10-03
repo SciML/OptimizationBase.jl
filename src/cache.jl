@@ -50,12 +50,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
         cons_vjp = SciMLBase.allowsconsjvp(opt), cons_jvp = SciMLBase.allowsconsjvp(opt), lag_h = SciMLBase.requireslagh(opt))
 
     if structural_analysis
-        obj_expr, cons_expr = symify_cache(f, prob)
-        try
-            obj_res, cons_res = analysis(obj_expr, cons_expr)
-        catch err
-            throw("Structural analysis requires SymbolicAnalysis.jl to be loaded, either add `using SymbolicAnalysis` to your script or set `structural_analysis = false`.")
-        end
+        obj_res, cons_res = symify_cache(f, prob, num_cons, manifold)
     else
         obj_res = nothing
         cons_res = nothing
