@@ -1,18 +1,20 @@
 module OptimizationSymbolicAnalysisExt
 
-using OptimizationBase, SciMLBase, SymbolicAnalysis, SymbolicAnalysis.Symbolics, OptimizationBase.ArrayInterface
+using OptimizationBase, SciMLBase, SymbolicAnalysis, SymbolicAnalysis.Symbolics,
+      OptimizationBase.ArrayInterface
 using SymbolicAnalysis: AnalysisResult
 import SymbolicAnalysis.Symbolics: variable, Equation, Inequality, unwrap, @variables
 
 function OptimizationBase.symify_cache(
         f::OptimizationFunction{iip, AD, F, G, FG, H, FGH, HV, C, CJ, CJV, CVJ, CH, HP,
             CJP, CHP, O, EX, CEX, SYS, LH, LHP, HCV, CJCV, CHCV, LHCV},
-        prob, num_cons, manifold) where {iip, AD, F, G, FG, H, FGH, HV, C, CJ, CJV, CVJ, CH, HP, CJP, CHP, O,
+        prob, num_cons,
+        manifold) where {
+        iip, AD, F, G, FG, H, FGH, HV, C, CJ, CJV, CVJ, CH, HP, CJP, CHP, O,
         EX <: Nothing, CEX <: Nothing, SYS, LH, LHP, HCV, CJCV, CHCV, LHCV}
     obj_expr = f.expr
     cons_expr = f.cons_expr === nothing ? nothing : getfield.(f.cons_expr, Ref(:lhs))
 
-    
     if obj_expr === nothing || cons_expr === nothing
         try
             vars = if prob.u0 isa Matrix
@@ -112,6 +114,5 @@ function OptimizationBase.symify_cache(
 
     return obj_res, cons_res
 end
-
 
 end
