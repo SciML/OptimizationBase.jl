@@ -234,11 +234,11 @@ end
 
 function spadtype_to_spsoadtype(adtype)
     if !(adtype.dense_ad isa SciMLBase.NoAD ||
-        adtype.dense_ad isa DifferentiationInterface.SecondOrder)
+         adtype.dense_ad isa DifferentiationInterface.SecondOrder)
         soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = adtype.coloring_algorithm)
+            DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
+            sparsity_detector = adtype.sparsity_detector,
+            coloring_algorithm = adtype.coloring_algorithm)
     else
         soadtype = adtype
     end
@@ -247,7 +247,7 @@ end
 
 function filled_spad(adtype)
     if adtype.sparsity_detector isa ADTypes.NoSparsityDetector &&
-        adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
+       adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
         adtype = AutoSparse(adtype.dense_ad; sparsity_detector = TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm())
     elseif adtype.sparsity_detector isa ADTypes.NoSparsityDetector &&
@@ -262,7 +262,6 @@ function filled_spad(adtype)
 end
 
 function generate_sparse_adtype(adtype)
-
     if !(adtype.dense_ad isa DifferentiationInterface.SecondOrder)
         adtype = filled_spad(adtype)
         soadtype = spadtype_to_spsoadtype(adtype)

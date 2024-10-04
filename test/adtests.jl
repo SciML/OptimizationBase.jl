@@ -260,9 +260,14 @@ optprob.cons_h(H3, x0)
     G2 = Array{Float64}(undef, 2)
     H2 = Array{Float64}(undef, 2, 2)
 
-    optf = OptimizationFunction(rosenbrock, DifferentiationInterface.SecondOrder(ADTypes.AutoFiniteDiff(), ADTypes.AutoReverseDiff()), cons = cons)
+    optf = OptimizationFunction(rosenbrock,
+        DifferentiationInterface.SecondOrder(
+            ADTypes.AutoFiniteDiff(), ADTypes.AutoReverseDiff()),
+        cons = cons)
     optprob = OptimizationBase.instantiate_function(
-        optf, x0, DifferentiationInterface.SecondOrder(ADTypes.AutoFiniteDiff(), ADTypes.AutoReverseDiff()),
+        optf, x0,
+        DifferentiationInterface.SecondOrder(
+            ADTypes.AutoFiniteDiff(), ADTypes.AutoReverseDiff()),
         nothing, 1, g = true, h = true, hv = true,
         cons_j = true, cons_h = true, cons_vjp = true,
         cons_jvp = true, lag_h = true)
@@ -489,9 +494,13 @@ end
     H2 = Array{Float64}(undef, 2, 2)
 
     optf = OptimizationFunction(
-        rosenbrock, DifferentiationInterface.SecondOrder(ADTypes.AutoFiniteDiff(), ADTypes.AutoReverseDiff()), cons = con2_c)
+        rosenbrock, DifferentiationInterface.SecondOrder(
+            ADTypes.AutoFiniteDiff(), ADTypes.AutoReverseDiff()),
+        cons = con2_c)
     optprob = OptimizationBase.instantiate_function(
-        optf, x0, DifferentiationInterface.SecondOrder(ADTypes.AutoFiniteDiff(), ADTypes.AutoReverseDiff()),
+        optf, x0,
+        DifferentiationInterface.SecondOrder(
+            ADTypes.AutoFiniteDiff(), ADTypes.AutoReverseDiff()),
         nothing, 2, g = true, h = true, hv = true,
         cons_j = true, cons_h = true, cons_vjp = true,
         cons_jvp = true, lag_h = true)
@@ -737,12 +746,15 @@ end
     @test lag_H ≈ lag_H_expected
     @test nnz(lag_H) == 5
 
-    optf = OptimizationFunction(sparse_objective, AutoSparse(DifferentiationInterface.SecondOrder(ADTypes.AutoForwardDiff(), ADTypes.AutoZygote())), 
+    optf = OptimizationFunction(sparse_objective,
+        AutoSparse(DifferentiationInterface.SecondOrder(
+            ADTypes.AutoForwardDiff(), ADTypes.AutoZygote())),
         cons = sparse_constraints)
 
     # Instantiate the optimization problem
     optprob = OptimizationBase.instantiate_function(optf, x0,
-    AutoSparse(DifferentiationInterface.SecondOrder(ADTypes.AutoForwardDiff(), ADTypes.AutoZygote())),
+        AutoSparse(DifferentiationInterface.SecondOrder(
+            ADTypes.AutoForwardDiff(), ADTypes.AutoZygote())),
         nothing, 2, g = true, h = true, cons_j = true, cons_h = true, lag_h = true)
     # Test gradient
     G = zeros(3)

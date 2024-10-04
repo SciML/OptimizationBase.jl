@@ -3,10 +3,13 @@ using OptimizationBase, LinearAlgebra, ForwardDiff, Zygote, FiniteDiff,
 using Test, ReverseDiff
 
 @testset "Matrix Valued" begin
-    for adtype in [AutoForwardDiff(), SecondOrder(AutoForwardDiff(), AutoZygote()), SecondOrder(AutoForwardDiff(), AutoFiniteDiff()),
+    for adtype in [AutoForwardDiff(), SecondOrder(AutoForwardDiff(), AutoZygote()),
+        SecondOrder(AutoForwardDiff(), AutoFiniteDiff()),
         AutoSparse(AutoForwardDiff(), sparsity_detector = TracerLocalSparsityDetector()),
-        AutoSparse(SecondOrder(AutoForwardDiff(), AutoZygote()), sparsity_detector = TracerLocalSparsityDetector()),
-        AutoSparse(SecondOrder(AutoForwardDiff(), AutoFiniteDiff()), sparsity_detector = TracerLocalSparsityDetector())]
+        AutoSparse(SecondOrder(AutoForwardDiff(), AutoZygote()),
+            sparsity_detector = TracerLocalSparsityDetector()),
+        AutoSparse(SecondOrder(AutoForwardDiff(), AutoFiniteDiff()),
+            sparsity_detector = TracerLocalSparsityDetector())]
         # 1. Matrix Factorization
         @show adtype
         function matrix_factorization_objective(X, A)
