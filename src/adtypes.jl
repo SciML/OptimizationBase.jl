@@ -220,7 +220,7 @@ Hessian is not defined via Zygote.
 AutoZygote
 
 function generate_adtype(adtype)
-    if !(adtype isa SciMLBase.NoAD && adtype isa DifferentiationInterface.SecondOrder)
+    if !(adtype isa SciMLBase.NoAD || adtype isa DifferentiationInterface.SecondOrder)
         soadtype = DifferentiationInterface.SecondOrder(adtype, adtype)
     elseif adtype isa DifferentiationInterface.SecondOrder
         soadtype = adtype
@@ -232,48 +232,49 @@ function generate_adtype(adtype)
     return adtype, soadtype
 end
 
-function generate_sparse_adtype(adtype)
+function spadtype_to_spsoadtype(adtype)
+    if !(adtype.dense_ad isa SciMLBase.NoAD ||
+        adtype.dense_ad isa DifferentiationInterface.SecondOrder)
+        soadtype = AutoSparse(
+                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
+                sparsity_detector = adtype.sparsity_detector,
+                coloring_algorithm = adtype.coloring_algorithm)
+    else
+        soadtype = adtype
+    end
+    return soadtype
+end
+
+function filled_spad(adtype)
     if adtype.sparsity_detector isa ADTypes.NoSparsityDetector &&
-       adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
+        adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
         adtype = AutoSparse(adtype.dense_ad; sparsity_detector = TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm())
-        if !(adtype.dense_ad isa SciMLBase.NoAD &&
-             adtype.dense_ad isa DifferentiationInterface.SecondOrder)
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = GreedyColoringAlgorithm())
-        end
     elseif adtype.sparsity_detector isa ADTypes.NoSparsityDetector &&
            !(adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm)
         adtype = AutoSparse(adtype.dense_ad; sparsity_detector = TracerSparsityDetector(),
             coloring_algorithm = adtype.coloring_algorithm)
-        if !(adtype.dense_ad isa SciMLBase.NoAD &&
-             adtype.dense_ad isa DifferentiationInterface.SecondOrder)
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = adtype.coloring_algorithm)
-        end
     elseif !(adtype.sparsity_detector isa ADTypes.NoSparsityDetector) &&
            adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
         adtype = AutoSparse(adtype.dense_ad; sparsity_detector = adtype.sparsity_detector,
             coloring_algorithm = GreedyColoringAlgorithm())
-        if !(adtype.dense_ad isa SciMLBase.NoAD &&
-             adtype.dense_ad isa DifferentiationInterface.SecondOrder)
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = GreedyColoringAlgorithm())
-        end
-    else
-        if !(adtype.dense_ad isa SciMLBase.NoAD &&
-             adtype.dense_ad isa DifferentiationInterface.SecondOrder)
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = adtype.coloring_algorithm)
-        end
     end
+end
+
+function generate_sparse_adtype(adtype)
+
+    if !(adtype.dense_ad isa DifferentiationInterface.SecondOrder)
+        adtype = filled_spad(adtype)
+        soadtype = spadtype_to_spsoadtype(adtype)
+    else
+        soadtype = adtype
+        adtype = AutoSparse(
+            adtype.dense_ad.inner,
+            sparsity_detector = soadtype.sparsity_detector,
+            coloring_algorithm = soadtype.coloring_algorithm)
+        adtype = filled_spad(adtype)
+        soadtype = filled_spad(soadtype)
+    end
+
     return adtype, soadtype
 end
