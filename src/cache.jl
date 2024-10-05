@@ -46,7 +46,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
        (SciMLBase.requireshessian(opt) || SciMLBase.requiresconshess(opt) ||
         SciMLBase.requireslagh(opt))
         @warn "The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. 
-        So a `SecondOrder` with $adtype for both inner and outer will be creates, this can be suboptimal and not work in all cases so 
+        So a `SecondOrder` with $adtype for both inner and outer will be created, this can be suboptimal and not work in some cases so 
         an explicit `SecondOrder` ADtype is recommended."
     end
 
