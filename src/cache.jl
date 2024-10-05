@@ -42,11 +42,18 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
 
     num_cons = prob.ucons === nothing ? 0 : length(prob.ucons)
 
-    if !(prob.f.adtype isa DifferentiationInterface.SecondOrder) &&
+    if !(prob.f.adtype isa DifferentiationInterface.SecondOrder ||
+         prob.f.adtype isa AutoZygote) &&
        (SciMLBase.requireshessian(opt) || SciMLBase.requiresconshess(opt) ||
         SciMLBase.requireslagh(opt))
         @warn "The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. 
         So a `SecondOrder` with $(prob.f.adtype) for both inner and outer will be created, this can be suboptimal and not work in some cases so 
+        an explicit `SecondOrder` ADtype is recommended."
+    elseif prob.f.adtype isa AutoZygote &&
+           (SciMLBase.requiresconshess(opt) || SciMLBase.requireslagh(opt) ||
+            SciMLBase.requireshessian(opt))
+        @warn "The selected optimization algorithm requires second order derivatives, but `AutoZygote` ADtype was provided. 
+        So a `SecondOrder` with `AutoZygote` for inner and `AutoForwardDiff` for outer will be created, for choosing another pair
         an explicit `SecondOrder` ADtype is recommended."
     end
 
