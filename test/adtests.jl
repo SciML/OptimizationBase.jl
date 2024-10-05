@@ -105,7 +105,7 @@ optprob.cons_h(H3, x0)
     μ = randn(1)
     σ = rand()
     optprob.lag_h(H4, x0, σ, μ)
-    @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
+    @test H4≈σ * H2 + μ[1] * H3[1] rtol=1e-6
 
     G2 = Array{Float64}(undef, 2)
     H2 = Array{Float64}(undef, 2, 2)
@@ -142,7 +142,7 @@ optprob.cons_h(H3, x0)
     μ = randn(1)
     σ = rand()
     optprob.lag_h(H4, x0, σ, μ)
-    @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
+    @test H4≈σ * H2 + μ[1] * H3[1] rtol=1e-6
 
     G2 = Array{Float64}(undef, 2)
     H2 = Array{Float64}(undef, 2, 2)
@@ -179,7 +179,7 @@ optprob.cons_h(H3, x0)
     μ = randn(1)
     σ = rand()
     optprob.lag_h(H4, x0, σ, μ)
-    @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
+    @test H4≈σ * H2 + μ[1] * H3[1] rtol=1e-6
 
     G2 = Array{Float64}(undef, 2)
     H2 = Array{Float64}(undef, 2, 2)
@@ -217,14 +217,15 @@ optprob.cons_h(H3, x0)
     μ = randn(1)
     σ = rand()
     optprob.lag_h(H4, x0, σ, μ)
-    @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
+    @test H4≈σ * H2 + μ[1] * H3[1] rtol=1e-6
 
     G2 = Array{Float64}(undef, 2)
     H2 = Array{Float64}(undef, 2, 2)
 
-    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoZygote(), cons = cons)
+    optf = OptimizationFunction(
+        rosenbrock, SecondOrder(AutoForwardDiff(), AutoZygote()), cons = cons)
     optprob = OptimizationBase.instantiate_function(
-        optf, x0, OptimizationBase.AutoZygote(),
+        optf, x0, SecondOrder(AutoForwardDiff(), AutoZygote()),
         nothing, 1, g = true, h = true, hv = true,
         cons_j = true, cons_h = true, cons_vjp = true,
         cons_jvp = true, lag_h = true)
@@ -254,14 +255,19 @@ optprob.cons_h(H3, x0)
     μ = randn(1)
     σ = rand()
     optprob.lag_h(H4, x0, σ, μ)
-    @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
+    @test H4≈σ * H2 + μ[1] * H3[1] rtol=1e-6
 
     G2 = Array{Float64}(undef, 2)
     H2 = Array{Float64}(undef, 2, 2)
 
-    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoFiniteDiff(), cons = cons)
+    optf = OptimizationFunction(rosenbrock,
+        DifferentiationInterface.SecondOrder(
+            ADTypes.AutoFiniteDiff(), ADTypes.AutoReverseDiff()),
+        cons = cons)
     optprob = OptimizationBase.instantiate_function(
-        optf, x0, OptimizationBase.AutoFiniteDiff(),
+        optf, x0,
+        DifferentiationInterface.SecondOrder(
+            ADTypes.AutoFiniteDiff(), ADTypes.AutoReverseDiff()),
         nothing, 1, g = true, h = true, hv = true,
         cons_j = true, cons_h = true, cons_vjp = true,
         cons_jvp = true, lag_h = true)
@@ -287,11 +293,12 @@ optprob.cons_h(H3, x0)
     H3 = [Array{Float64}(undef, 2, 2)]
     optprob.cons_h(H3, x0)
     @test H3≈[[2.0 0.0; 0.0 2.0]] rtol=1e-5
+    Random.seed!(123)
     H4 = Array{Float64}(undef, 2, 2)
     μ = randn(1)
     σ = rand()
     optprob.lag_h(H4, x0, σ, μ)
-    @test H4≈σ * H1 + μ[1] * H3[1] rtol=1e-6
+    @test H4≈σ * H2 + μ[1] * H3[1] rtol=1e-6
 end
 
 @testset "two constraints tests" begin
@@ -448,9 +455,10 @@ end
     G2 = Array{Float64}(undef, 2)
     H2 = Array{Float64}(undef, 2, 2)
 
-    optf = OptimizationFunction(rosenbrock, OptimizationBase.AutoZygote(), cons = con2_c)
+    optf = OptimizationFunction(
+        rosenbrock, SecondOrder(AutoForwardDiff(), AutoZygote()), cons = con2_c)
     optprob = OptimizationBase.instantiate_function(
-        optf, x0, OptimizationBase.AutoZygote(),
+        optf, x0, SecondOrder(AutoForwardDiff(), AutoZygote()),
         nothing, 2, g = true, h = true, hv = true,
         cons_j = true, cons_h = true, cons_vjp = true,
         cons_jvp = true, lag_h = true)
@@ -486,9 +494,13 @@ end
     H2 = Array{Float64}(undef, 2, 2)
 
     optf = OptimizationFunction(
-        rosenbrock, OptimizationBase.AutoFiniteDiff(), cons = con2_c)
+        rosenbrock, DifferentiationInterface.SecondOrder(
+            ADTypes.AutoFiniteDiff(), ADTypes.AutoReverseDiff()),
+        cons = con2_c)
     optprob = OptimizationBase.instantiate_function(
-        optf, x0, OptimizationBase.AutoFiniteDiff(),
+        optf, x0,
+        DifferentiationInterface.SecondOrder(
+            ADTypes.AutoFiniteDiff(), ADTypes.AutoReverseDiff()),
         nothing, 2, g = true, h = true, hv = true,
         cons_j = true, cons_h = true, cons_vjp = true,
         cons_jvp = true, lag_h = true)
@@ -734,12 +746,15 @@ end
     @test lag_H ≈ lag_H_expected
     @test nnz(lag_H) == 5
 
-    optf = OptimizationFunction(sparse_objective, OptimizationBase.AutoSparseZygote(),
+    optf = OptimizationFunction(sparse_objective,
+        AutoSparse(DifferentiationInterface.SecondOrder(
+            ADTypes.AutoForwardDiff(), ADTypes.AutoZygote())),
         cons = sparse_constraints)
 
     # Instantiate the optimization problem
     optprob = OptimizationBase.instantiate_function(optf, x0,
-        OptimizationBase.AutoSparseZygote(),
+        AutoSparse(DifferentiationInterface.SecondOrder(
+            ADTypes.AutoForwardDiff(), ADTypes.AutoZygote())),
         nothing, 2, g = true, h = true, cons_j = true, cons_h = true, lag_h = true)
     # Test gradient
     G = zeros(3)
@@ -1065,10 +1080,10 @@ end
 
     cons = (x, p) -> [x[1]^2 + x[2]^2]
     optf = OptimizationFunction{false}(rosenbrock,
-        OptimizationBase.AutoZygote(),
+        SecondOrder(AutoForwardDiff(), AutoZygote()),
         cons = cons)
     optprob = OptimizationBase.instantiate_function(
-        optf, x0, OptimizationBase.AutoZygote(),
+        optf, x0, SecondOrder(AutoForwardDiff(), AutoZygote()),
         nothing, 1, g = true, h = true, cons_j = true, cons_h = true)
 
     @test optprob.grad(x0) == G1
@@ -1081,10 +1096,10 @@ end
 
     cons = (x, p) -> [x[1]^2 + x[2]^2, x[2] * sin(x[1]) - x[1]]
     optf = OptimizationFunction{false}(rosenbrock,
-        OptimizationBase.AutoZygote(),
+        SecondOrder(AutoForwardDiff(), AutoZygote()),
         cons = cons)
     optprob = OptimizationBase.instantiate_function(
-        optf, x0, OptimizationBase.AutoZygote(),
+        optf, x0, SecondOrder(AutoForwardDiff(), AutoZygote()),
         nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
 
     @test optprob.grad(x0) == G1

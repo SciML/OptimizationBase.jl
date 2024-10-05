@@ -42,6 +42,14 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
 
     num_cons = prob.ucons === nothing ? 0 : length(prob.ucons)
 
+    if !(prob.f.adtype isa DifferentiationInterface.SecondOrder) &&
+       (SciMLBase.requireshessian(opt) || SciMLBase.requiresconshess(opt) ||
+        SciMLBase.requireslagh(opt))
+        @warn "The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. 
+        So a `SecondOrder` with $adtype for both inner and outer will be created, this can be suboptimal and not work in some cases so 
+        an explicit `SecondOrder` ADtype is recommended."
+    end
+
     f = OptimizationBase.instantiate_function(
         prob.f, reinit_cache, prob.f.adtype, num_cons;
         g = SciMLBase.requiresgradient(opt), h = SciMLBase.requireshessian(opt),
