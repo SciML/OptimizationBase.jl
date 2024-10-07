@@ -16,7 +16,7 @@ import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp,
                                  gradient!, hessian!, hvp!, jacobian!, gradient, hessian,
                                  hvp, jacobian, Constant
 using ADTypes, SciMLBase
-import Zygote
+import Zygote, Zygote.ForwardDiff
 
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, x,

@@ -223,9 +223,9 @@ optprob.cons_h(H3, x0)
     H2 = Array{Float64}(undef, 2, 2)
 
     optf = OptimizationFunction(
-        rosenbrock, SecondOrder(AutoForwardDiff(), AutoZygote()), cons = cons)
+        rosenbrock, AutoZygote(), cons = cons)
     optprob = OptimizationBase.instantiate_function(
-        optf, x0, SecondOrder(AutoForwardDiff(), AutoZygote()),
+        optf, x0, AutoZygote(),
         nothing, 1, g = true, h = true, hv = true,
         cons_j = true, cons_h = true, cons_vjp = true,
         cons_jvp = true, lag_h = true)
@@ -456,9 +456,9 @@ end
     H2 = Array{Float64}(undef, 2, 2)
 
     optf = OptimizationFunction(
-        rosenbrock, SecondOrder(AutoForwardDiff(), AutoZygote()), cons = con2_c)
+        rosenbrock, AutoZygote(), cons = con2_c)
     optprob = OptimizationBase.instantiate_function(
-        optf, x0, SecondOrder(AutoForwardDiff(), AutoZygote()),
+        optf, x0, AutoZygote(),
         nothing, 2, g = true, h = true, hv = true,
         cons_j = true, cons_h = true, cons_vjp = true,
         cons_jvp = true, lag_h = true)
@@ -1080,10 +1080,10 @@ end
 
     cons = (x, p) -> [x[1]^2 + x[2]^2]
     optf = OptimizationFunction{false}(rosenbrock,
-        SecondOrder(AutoForwardDiff(), AutoZygote()),
+        AutoZygote(),
         cons = cons)
     optprob = OptimizationBase.instantiate_function(
-        optf, x0, SecondOrder(AutoForwardDiff(), AutoZygote()),
+        optf, x0, AutoZygote(),
         nothing, 1, g = true, h = true, cons_j = true, cons_h = true)
 
     @test optprob.grad(x0) == G1
@@ -1096,10 +1096,10 @@ end
 
     cons = (x, p) -> [x[1]^2 + x[2]^2, x[2] * sin(x[1]) - x[1]]
     optf = OptimizationFunction{false}(rosenbrock,
-        SecondOrder(AutoForwardDiff(), AutoZygote()),
+        AutoZygote(),
         cons = cons)
     optprob = OptimizationBase.instantiate_function(
-        optf, x0, SecondOrder(AutoForwardDiff(), AutoZygote()),
+        optf, x0, AutoZygote(),
         nothing, 2, g = true, h = true, cons_j = true, cons_h = true)
 
     @test optprob.grad(x0) == G1
