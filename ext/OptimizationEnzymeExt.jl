@@ -176,7 +176,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
 
             Enzyme.autodiff(fmode,
                 inner_grad,
-                Const(rmode)
+                Const(rmode),
                 Enzyme.BatchDuplicated(θ, vdθ),
                 Enzyme.BatchDuplicatedNoNeed(G, vdbθ),
                 Const(f.f),
