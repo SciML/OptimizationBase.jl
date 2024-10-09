@@ -18,7 +18,7 @@ using Core: Vararg
 end
 
 function inner_grad(mode::Mode, θ, bθ, f, p) where Mode
-    Enzyme.autodiff(Mode,
+    Enzyme.autodiff(mode,
         Const(firstapply),
         Active,
         Const(f),
