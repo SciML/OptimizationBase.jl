@@ -91,13 +91,13 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     rmode = if adtype.mode isa Nothing
         Enzyme.Reverse
     else
-        set_runtime_activity2(Enzyme.Reverse)
+        set_runtime_activity2(Enzyme.Reverse, adtype.mode)
     end
 
     fmode = if adtype.mode isa Nothing
         Enzyme.Forward
     else
-        set_runtime_activity2(Enzyme.Forward)
+        set_runtime_activity2(Enzyme.Forward. adtype.mode)
     end
 
     if g == true && f.grad === nothing
@@ -423,13 +423,13 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{false}, x
     rmode = if adtype.mode isa Nothing
         Enzyme.Reverse
     else
-        set_runtime_activity2(Enzyme.Reverse)
+        set_runtime_activity2(Enzyme.Reverse, adtype.mode)
     end
 
     fmode = if adtype.mode isa Nothing
         Enzyme.Forward
     else
-        set_runtime_activity2(Enzyme.Forward)
+        set_runtime_activity2(Enzyme.Forward, adtype.mode)
     end
 
     if g == true && f.grad === nothing

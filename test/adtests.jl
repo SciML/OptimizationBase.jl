@@ -1,6 +1,6 @@
 using OptimizationBase, Test, DifferentiationInterface, SparseArrays, Symbolics
 using ForwardDiff, Zygote, ReverseDiff, FiniteDiff, Tracker
-using ModelingToolkit, Enzyme, Random
+using Enzyme, Random
 
 x0 = zeros(2)
 rosenbrock(x, p = nothing) = (1 - x[1])^2 + 100 * (x[2] - x[1]^2)^2
@@ -1174,8 +1174,8 @@ using MLUtils
     optf = OptimizationBase.instantiate_function(
         optf, rand(3), AutoEnzyme(), iterate(data)[1], g = true, fg = true)
     G0 = zeros(3)
-    @test_broken optf.grad(G0, ones(3), (x, y))
-    stochgrads = []
+    @test_broken optf.grad(G0, ones(3), (x0, y0))
+    # stochgrads = []
     # for (x,y) in data
     #     G = zeros(3)
     #     optf.grad(G, ones(3), (x,y))
