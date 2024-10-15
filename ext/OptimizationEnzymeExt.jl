@@ -17,7 +17,7 @@ using Core: Vararg
     end
 end
 
-function inner_grad(mode::Mode, θ, bθ, f, p) where Mode
+function inner_grad(mode::Mode, θ, bθ, f, p) where {Mode}
     Enzyme.autodiff(mode,
         Const(firstapply),
         Active,
@@ -28,7 +28,7 @@ function inner_grad(mode::Mode, θ, bθ, f, p) where Mode
     return nothing
 end
 
-function hv_f2_alloc(mode::Mode, x, f, p) where Mode
+function hv_f2_alloc(mode::Mode, x, f, p) where {Mode}
     dx = Enzyme.make_zero(x)
     Enzyme.autodiff(mode,
         Const(firstapply),
@@ -80,14 +80,15 @@ function lag_grad(mode, x, dx, lagrangian::Function, _f::Function, cons::Functio
     return nothing
 end
 
-
-set_runtime_activity2(a::Mode1, ::Enzyme.Mode{ABI, Err, RTA}) where {Mode1, ABI, Err, RTA} = Enzyme.set_runtime_activity(a, RTA)
+function set_runtime_activity2(
+        a::Mode1, ::Enzyme.Mode{ABI, Err, RTA}) where {Mode1, ABI, Err, RTA}
+    Enzyme.set_runtime_activity(a, RTA)
+end
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         adtype::AutoEnzyme, p, num_cons = 0;
         g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
         lag_h = false)
-
     rmode = if adtype.mode isa Nothing
         Enzyme.Reverse
     else
@@ -97,7 +98,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     fmode = if adtype.mode isa Nothing
         Enzyme.Forward
     else
-        set_runtime_activity2(Enzyme.Forward. adtype.mode)
+        set_runtime_activity2(Enzyme.Forward.adtype.mode)
     end
 
     if g == true && f.grad === nothing
