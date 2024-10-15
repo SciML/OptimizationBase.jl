@@ -98,7 +98,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     fmode = if adtype.mode isa Nothing
         Enzyme.Forward
     else
-        set_runtime_activity2(Enzyme.Forward.adtype.mode)
+        set_runtime_activity2(Enzyme.Forward, adtype.mode)
     end
 
     if g == true && f.grad === nothing
