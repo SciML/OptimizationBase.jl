@@ -3,11 +3,15 @@ using OptimizationBase, LinearAlgebra, ForwardDiff, Zygote, FiniteDiff,
 using Test, ReverseDiff
 
 @testset "Matrix Valued" begin
-    for adtype in [AutoForwardDiff(), AutoZygote(), AutoFiniteDiff(),
+    for adtype in [AutoForwardDiff(), SecondOrder(AutoForwardDiff(), AutoZygote()),
+        SecondOrder(AutoForwardDiff(), AutoFiniteDiff()),
         AutoSparse(AutoForwardDiff(), sparsity_detector = TracerLocalSparsityDetector()),
-        AutoSparse(AutoZygote(), sparsity_detector = TracerLocalSparsityDetector()),
-        AutoSparse(AutoFiniteDiff(), sparsity_detector = TracerLocalSparsityDetector())]
+        AutoSparse(SecondOrder(AutoForwardDiff(), AutoZygote()),
+            sparsity_detector = TracerLocalSparsityDetector()),
+        AutoSparse(SecondOrder(AutoForwardDiff(), AutoFiniteDiff()),
+            sparsity_detector = TracerLocalSparsityDetector())]
         # 1. Matrix Factorization
+        @show adtype
         function matrix_factorization_objective(X, A)
             U, V = @view(X[1:size(A, 1), 1:Int(size(A, 2) / 2)]),
             @view(X[1:size(A, 1), (Int(size(A, 2) / 2) + 1):size(A, 2)])
@@ -28,12 +32,7 @@ using Test, ReverseDiff
             cons_j = true, cons_h = true)
         optf.grad(hcat(U_mf, V_mf))
         optf.hess(hcat(U_mf, V_mf))
-        if adtype != AutoSparse(
-               AutoForwardDiff(), sparsity_detector = TracerLocalSparsityDetector()) &&
-           adtype !=
-           AutoSparse(AutoZygote(), sparsity_detector = TracerLocalSparsityDetector()) &&
-           adtype !=
-           AutoSparse(AutoFiniteDiff(), sparsity_detector = TracerLocalSparsityDetector())
+        if !(adtype isa ADTypes.AutoSparse)
             optf.cons_j(hcat(U_mf, V_mf))
             optf.cons_h(hcat(U_mf, V_mf))
         end
@@ -55,12 +54,7 @@ using Test, ReverseDiff
             cons_j = true, cons_h = true)
         optf.grad(X_pca)
         optf.hess(X_pca)
-        if adtype != AutoSparse(
-               AutoForwardDiff(), sparsity_detector = TracerLocalSparsityDetector()) &&
-           adtype !=
-           AutoSparse(AutoZygote(), sparsity_detector = TracerLocalSparsityDetector()) &&
-           adtype !=
-           AutoSparse(AutoFiniteDiff(), sparsity_detector = TracerLocalSparsityDetector())
+        if !(adtype isa ADTypes.AutoSparse)
             optf.cons_j(X_pca)
             optf.cons_h(X_pca)
         end
@@ -78,7 +72,7 @@ using Test, ReverseDiff
         Omega_mc = rand(4, 4) .> 0.5  # Mask for observed entries (boolean matrix)
         X_mc = rand(4, 4)  # Matrix to be completed
         optf = OptimizationFunction{false}(
-            matrix_completion_objective, adtype, cons = rank_constraint)
+            matrix_completion_objective, adtype)
         optf = OptimizationBase.instantiate_function(
             optf, X_mc, adtype, (A_mc, Omega_mc), g = true, h = true)
         optf.grad(X_mc)

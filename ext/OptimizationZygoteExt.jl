@@ -16,10 +16,13 @@ import DifferentiationInterface: prepare_gradient, prepare_hessian, prepare_hvp,
                                  gradient!, hessian!, hvp!, jacobian!, gradient, hessian,
                                  hvp, jacobian, Constant
 using ADTypes, SciMLBase
-import Zygote
+import Zygote, Zygote.ForwardDiff
 
 function OptimizationBase.instantiate_function(
-        f::OptimizationFunction{true}, x, adtype::ADTypes.AutoZygote,
+        f::OptimizationFunction{true}, x,
+        adtype::Union{ADTypes.AutoZygote,
+            DifferentiationInterface.SecondOrder{
+                <:ADTypes.AbstractADType, <:ADTypes.AutoZygote}},
         p = SciMLBase.NullParameters(), num_cons = 0;
         g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,
@@ -280,7 +283,10 @@ function OptimizationBase.instantiate_function(
 end
 
 function OptimizationBase.instantiate_function(
-        f::OptimizationFunction{true}, x, adtype::ADTypes.AutoSparse{<:AutoZygote},
+        f::OptimizationFunction{true}, x,
+        adtype::ADTypes.AutoSparse{<:Union{ADTypes.AutoZygote,
+            DifferentiationInterface.SecondOrder{
+                <:ADTypes.AbstractADType, <:ADTypes.AutoZygote}}},
         p = SciMLBase.NullParameters(), num_cons = 0;
         g = false, h = false, hv = false, fg = false, fgh = false,
         cons_j = false, cons_vjp = false, cons_jvp = false, cons_h = false,

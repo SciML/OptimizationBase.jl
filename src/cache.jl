@@ -42,6 +42,21 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
 
     num_cons = prob.ucons === nothing ? 0 : length(prob.ucons)
 
+    if !(prob.f.adtype isa DifferentiationInterface.SecondOrder ||
+         prob.f.adtype isa AutoZygote) &&
+       (SciMLBase.requireshessian(opt) || SciMLBase.requiresconshess(opt) ||
+        SciMLBase.requireslagh(opt))
+        @warn "The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. 
+        So a `SecondOrder` with $(prob.f.adtype) for both inner and outer will be created, this can be suboptimal and not work in some cases so 
+        an explicit `SecondOrder` ADtype is recommended."
+    elseif prob.f.adtype isa AutoZygote &&
+           (SciMLBase.requiresconshess(opt) || SciMLBase.requireslagh(opt) ||
+            SciMLBase.requireshessian(opt))
+        @warn "The selected optimization algorithm requires second order derivatives, but `AutoZygote` ADtype was provided. 
+        So a `SecondOrder` with `AutoZygote` for inner and `AutoForwardDiff` for outer will be created, for choosing another pair
+        an explicit `SecondOrder` ADtype is recommended."
+    end
+
     f = OptimizationBase.instantiate_function(
         prob.f, reinit_cache, prob.f.adtype, num_cons;
         g = SciMLBase.requiresgradient(opt), h = SciMLBase.requireshessian(opt),
@@ -50,12 +65,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
         cons_vjp = SciMLBase.allowsconsjvp(opt), cons_jvp = SciMLBase.allowsconsjvp(opt), lag_h = SciMLBase.requireslagh(opt))
 
     if structural_analysis
-        obj_expr, cons_expr = symify_cache(f, prob)
-        try
-            obj_res, cons_res = analysis(obj_expr, cons_expr)
-        catch err
-            throw("Structural analysis requires SymbolicAnalysis.jl to be loaded, either add `using SymbolicAnalysis` to your script or set `structural_analysis = false`.")
-        end
+        obj_res, cons_res = symify_cache(f, prob, num_cons, manifold)
     else
         obj_res = nothing
         cons_res = nothing

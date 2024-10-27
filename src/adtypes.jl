@@ -220,102 +220,69 @@ Hessian is not defined via Zygote.
 AutoZygote
 
 function generate_adtype(adtype)
-    if !(adtype isa SciMLBase.NoAD) && ADTypes.mode(adtype) isa ADTypes.ForwardMode
-        soadtype = DifferentiationInterface.SecondOrder(adtype, AutoReverseDiff()) #make zygote?
-    elseif !(adtype isa SciMLBase.NoAD) && ADTypes.mode(adtype) isa ADTypes.ReverseMode
+    if !(adtype isa SciMLBase.NoAD || adtype isa DifferentiationInterface.SecondOrder ||
+         adtype isa AutoZygote)
+        soadtype = DifferentiationInterface.SecondOrder(adtype, adtype)
+    elseif adtype isa AutoZygote
         soadtype = DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype)
-    else
+    elseif adtype isa DifferentiationInterface.SecondOrder
         soadtype = adtype
+        adtype = adtype.inner
+    elseif adtype isa SciMLBase.NoAD
+        soadtype = adtype
+        adtype = adtype
     end
     return adtype, soadtype
 end
 
-function generate_sparse_adtype(adtype)
+function spadtype_to_spsoadtype(adtype)
+    if !(adtype.dense_ad isa SciMLBase.NoAD ||
+         adtype.dense_ad isa DifferentiationInterface.SecondOrder ||
+         adtype.dense_ad isa AutoZygote)
+        soadtype = AutoSparse(
+            DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
+            sparsity_detector = adtype.sparsity_detector,
+            coloring_algorithm = adtype.coloring_algorithm)
+    elseif adtype.dense_ad isa AutoZygote
+        soadtype = AutoSparse(
+            DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype.dense_ad),
+            sparsity_detector = adtype.sparsity_detector,
+            coloring_algorithm = adtype.coloring_algorithm)
+    else
+        soadtype = adtype
+    end
+    return soadtype
+end
+
+function filled_spad(adtype)
     if adtype.sparsity_detector isa ADTypes.NoSparsityDetector &&
        adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
         adtype = AutoSparse(adtype.dense_ad; sparsity_detector = TracerSparsityDetector(),
             coloring_algorithm = GreedyColoringAlgorithm())
-        if adtype.dense_ad isa ADTypes.AutoFiniteDiff
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = GreedyColoringAlgorithm())
-        elseif !(adtype.dense_ad isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ForwardMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, AutoReverseDiff()),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = GreedyColoringAlgorithm()) #make zygote?
-        elseif !(adtype isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ReverseMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype.dense_ad),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = GreedyColoringAlgorithm())
-        end
     elseif adtype.sparsity_detector isa ADTypes.NoSparsityDetector &&
            !(adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm)
         adtype = AutoSparse(adtype.dense_ad; sparsity_detector = TracerSparsityDetector(),
             coloring_algorithm = adtype.coloring_algorithm)
-        if adtype.dense_ad isa ADTypes.AutoFiniteDiff
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = adtype.coloring_algorithm)
-        elseif !(adtype.dense_ad isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ForwardMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, AutoReverseDiff()),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = adtype.coloring_algorithm)
-        elseif !(adtype isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ReverseMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype.dense_ad),
-                sparsity_detector = TracerSparsityDetector(),
-                coloring_algorithm = adtype.coloring_algorithm)
-        end
     elseif !(adtype.sparsity_detector isa ADTypes.NoSparsityDetector) &&
            adtype.coloring_algorithm isa ADTypes.NoColoringAlgorithm
         adtype = AutoSparse(adtype.dense_ad; sparsity_detector = adtype.sparsity_detector,
             coloring_algorithm = GreedyColoringAlgorithm())
-        if adtype.dense_ad isa ADTypes.AutoFiniteDiff
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = GreedyColoringAlgorithm())
-        elseif !(adtype.dense_ad isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ForwardMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, AutoReverseDiff()),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = GreedyColoringAlgorithm())
-        elseif !(adtype isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ReverseMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype.dense_ad),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = GreedyColoringAlgorithm())
-        end
-    else
-        if adtype.dense_ad isa ADTypes.AutoFiniteDiff
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, adtype.dense_ad),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = adtype.coloring_algorithm)
-        elseif !(adtype.dense_ad isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ForwardMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(adtype.dense_ad, AutoReverseDiff()),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = adtype.coloring_algorithm)
-        elseif !(adtype isa SciMLBase.NoAD) &&
-               ADTypes.mode(adtype.dense_ad) isa ADTypes.ReverseMode
-            soadtype = AutoSparse(
-                DifferentiationInterface.SecondOrder(AutoForwardDiff(), adtype.dense_ad),
-                sparsity_detector = adtype.sparsity_detector,
-                coloring_algorithm = adtype.coloring_algorithm)
-        end
     end
+end
+
+function generate_sparse_adtype(adtype)
+    if !(adtype.dense_ad isa DifferentiationInterface.SecondOrder)
+        adtype = filled_spad(adtype)
+        soadtype = spadtype_to_spsoadtype(adtype)
+    else
+        soadtype = adtype
+        adtype = AutoSparse(
+            adtype.dense_ad.inner,
+            sparsity_detector = soadtype.sparsity_detector,
+            coloring_algorithm = soadtype.coloring_algorithm)
+        adtype = filled_spad(adtype)
+        soadtype = filled_spad(soadtype)
+    end
+
     return adtype, soadtype
 end
