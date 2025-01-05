@@ -61,7 +61,7 @@ SciMLBase = "2"
 SparseConnectivityTracer = "0.6"
 SparseMatrixColorings = "0.4"
 SymbolicAnalysis = "0.3"
-Zygote = "0.6.67"
+Zygote = "0.6.67, 0.7"
 julia = "1.10"
 
 [extras]
