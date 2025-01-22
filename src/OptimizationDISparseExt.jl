@@ -133,7 +133,11 @@ function instantiate_function(
         end
 
         function lagrangian(θ, σ, λ, p)
-            return σ * f.f(θ, p) + dot(λ, cons_oop(θ))
+            if eltype(θ) <: SparseConnectivityTracer.AbstractTracer || !iszero(θ)
+                return σ * f.f(θ, p) + dot(λ, cons_oop(θ))
+            else
+                return dot(λ, cons_oop(θ))
+            end
         end
     end
 
