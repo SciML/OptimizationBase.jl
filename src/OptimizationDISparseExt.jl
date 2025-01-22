@@ -133,7 +133,11 @@ function instantiate_function(
         end
 
         function lagrangian(θ, σ, λ, p)
-            return σ * f.f(θ, p) + dot(λ, cons_oop(θ))
+            if iszero(θ)
+                return dot(λ, cons_oop(θ))
+            else
+                return σ * f.f(θ, p) + dot(λ, cons_oop(θ))
+            end
         end
     end
 
