@@ -64,7 +64,9 @@ function OptimizationBase.instantiate_function(
                            for i in 1:num_cons]
     expr = symbolify(f.expr)
     cons_expr = symbolify.(f.cons_expr)
-
+    num_dimensions = f.num_dimensions === nothing ? nothing : f.num_dimensions
+    fitness_scheme = f.fitness_scheme === nothing ? nothing : f.fitness_scheme
+    
     return MultiObjectiveOptimizationFunction{true}(
         f.f, SciMLBase.NoAD(); jac = jac, hess = hess,
         hv = hv,
@@ -74,7 +76,9 @@ function OptimizationBase.instantiate_function(
         cons_hess_prototype = cons_hess_prototype,
         expr = expr, cons_expr = cons_expr,
         sys = f.sys,
-        observed = f.observed)
+        observed = f.observed
+        num_dimensions,
+        fitness_scheme)
 end
 
 function OptimizationBase.instantiate_function(
@@ -98,7 +102,9 @@ function OptimizationBase.instantiate_function(
                            for i in 1:num_cons]
     expr = symbolify(f.expr)
     cons_expr = symbolify.(f.cons_expr)
-
+    num_dimensions = f.num_dimensions === nothing ? nothing : f.num_dimensions
+    fitness_scheme = f.fitness_scheme === nothing ? nothing : f.fitness_scheme
+    
     return MultiObjectiveOptimizationFunction{true}(
         f.f, SciMLBase.NoAD(); jac = jac, hess = hess,
         hv = hv,
@@ -108,7 +114,9 @@ function OptimizationBase.instantiate_function(
         cons_hess_prototype = cons_hess_prototype,
         expr = expr, cons_expr = cons_expr,
         sys = f.sys,
-        observed = f.observed)
+        observed = f.observed
+        num_dimensions,
+        fitness_scheme)
 end
 
 function OptimizationBase.instantiate_function(
