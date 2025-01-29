@@ -76,7 +76,7 @@ function OptimizationBase.instantiate_function(
         cons_hess_prototype = cons_hess_prototype,
         expr = expr, cons_expr = cons_expr,
         sys = f.sys,
-        observed = f.observed
+        observed = f.observed,
         num_dimensions,
         fitness_scheme)
 end
@@ -114,7 +114,7 @@ function OptimizationBase.instantiate_function(
         cons_hess_prototype = cons_hess_prototype,
         expr = expr, cons_expr = cons_expr,
         sys = f.sys,
-        observed = f.observed
+        observed = f.observed,
         num_dimensions,
         fitness_scheme)
 end
