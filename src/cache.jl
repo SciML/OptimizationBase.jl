@@ -5,7 +5,7 @@ struct AnalysisResults{O, C}
     constraints::C
 end
 
-struct OptimizationCache{F, RC, LB, UB, LC, UC, S, O, P, C, M} <:
+struct OptimizationCache{F, RC, LB, UB, LC, UC, S, O, P, C, M, ND, FS} <:
        SciMLBase.AbstractOptimizationCache
     f::F
     reinit_cache::RC
@@ -20,6 +20,8 @@ struct OptimizationCache{F, RC, LB, UB, LC, UC, S, O, P, C, M} <:
     manifold::M
     analysis_results::AnalysisResults
     solver_args::NamedTuple
+    num_dimensions::ND
+    fitness_scheme::FS
 end
 
 function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
@@ -39,7 +41,10 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
         reinit_cache = OptimizationBase.ReInitCache(prob.u0, prob.p)
         reinit_cache_passedon = reinit_cache
     end
-
+    
+    num_dimensions=prob.num_dimensions
+    fitness_scheme = prob.fitness_scheme
+    
     num_cons = prob.ucons === nothing ? 0 : length(prob.ucons)
 
     if !(prob.f.adtype isa DifferentiationInterface.SecondOrder ||
@@ -75,7 +80,7 @@ function OptimizationCache(prob::SciMLBase.OptimizationProblem, opt;
         prob.ucons, prob.sense,
         opt, progress, callback, manifold, AnalysisResults(obj_res, cons_res),
         merge((; maxiters, maxtime, abstol, reltol),
-            NamedTuple(kwargs)))
+            NamedTuple(kwargs)), num_dimensions, fitness_scheme)
 end
 
 function SciMLBase.__init(prob::SciMLBase.OptimizationProblem, opt;
@@ -87,7 +92,7 @@ function SciMLBase.__init(prob::SciMLBase.OptimizationProblem, opt;
         progress = false,
         kwargs...)
     return OptimizationCache(prob, opt; maxiters, maxtime, abstol, callback,
-        reltol, progress,
+        reltol, progress, prob.num_dimensions, prob.fitness_scheme,
         kwargs...)
 end
 
