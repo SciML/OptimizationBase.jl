@@ -101,6 +101,12 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         set_runtime_activity2(Enzyme.Forward, adtype.mode)
     end
 
+    func_annot = if adtype.mode isa Nothing
+        Nothing
+    else
+        adtype.mode.function_annotation
+    end
+
     if g == true && f.grad === nothing
         function grad(res, θ, p = p)
             Enzyme.make_zero!(res)
@@ -217,6 +223,14 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         # if num_cons > length(x)
         seeds = Enzyme.onehot(x)
         Jaccache = Tuple(zeros(eltype(x), num_cons) for i in 1:length(x))
+        basefunc = f.cons
+        if func_annot <: Enzyme.Const
+            basefunc = Enzyme.Const(basefunc)
+        elseif func_annot <: Enzyme.Duplicated || func_annot <: Enzyme.BatchDuplicated
+            basefunc = Enzyme.BatchDuplicated(basefunc, Tuple(make_zero(basefunc) for i in 1:length(x)))
+        elseif func_annot <: Enzyme.DuplicatedNoNeed || func_annot <: Enzyme.BatchDuplicatedNoNeed
+            basefunc = Enzyme.BatchDuplicatedNoNeed(basefunc, Tuple(make_zero(basefunc) for i in 1:length(x)))
+        end
         # else
         #     seeds = Enzyme.onehot(zeros(eltype(x), num_cons))
         #     Jaccache = Tuple(zero(x) for i in 1:num_cons)
@@ -225,11 +239,16 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         y = zeros(eltype(x), num_cons)
 
         function cons_j!(J, θ)
-            for i in eachindex(Jaccache)
-                Enzyme.make_zero!(Jaccache[i])
+            for jc in Jaccache
+                Enzyme.make_zero!(jc)
             end
             Enzyme.make_zero!(y)
-            Enzyme.autodiff(fmode, f.cons, BatchDuplicated(y, Jaccache),
+            if func_annot <: Enzyme.Duplicated || func_annot <: Enzyme.BatchDuplicated || func_annot <: Enzyme.DuplicatedNoNeed || func_annot <: Enzyme.BatchDuplicatedNoNeed                
+                for bf in basefunc.dval
+                    Enzyme.make_zero!(bf)
+                end
+            end
+            Enzyme.autodiff(fmode, basfunc, BatchDuplicated(y, Jaccache),
                 BatchDuplicated(θ, seeds), Const(p))
             for i in eachindex(θ)
                 if J isa Vector
