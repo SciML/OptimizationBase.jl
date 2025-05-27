@@ -84,6 +84,8 @@ function set_runtime_activity2(
         a::Mode1, ::Enzyme.Mode{ABI, Err, RTA}) where {Mode1, ABI, Err, RTA}
     Enzyme.set_runtime_activity(a, RTA)
 end
+function_annotation(::Nothing) = Nothing
+function_annotation(::AutoEnzyme{<:Any, A}) = A
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         adtype::AutoEnzyme, p, num_cons = 0;
         g = false, h = false, hv = false, fg = false, fgh = false,
@@ -101,11 +103,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         set_runtime_activity2(Enzyme.Forward, adtype.mode)
     end
 
-    func_annot = if adtype.mode isa Nothing
-        Nothing
-    else
-        adtype.function_annotation
-    end
+    func_annot = function_annotation(adtype.function_annotation)
 
     if g == true && f.grad === nothing
         function grad(res, θ, p = p)
