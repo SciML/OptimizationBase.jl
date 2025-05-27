@@ -104,7 +104,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
     func_annot = if adtype.mode isa Nothing
         Nothing
     else
-        adtype.mode.function_annotation
+        adtype.function_annotation
     end
 
     if g == true && f.grad === nothing
