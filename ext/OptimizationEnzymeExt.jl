@@ -246,7 +246,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
                     Enzyme.make_zero!(bf)
                 end
             end
-            Enzyme.autodiff(fmode, basfunc, BatchDuplicated(y, Jaccache),
+            Enzyme.autodiff(fmode, basefunc , BatchDuplicated(y, Jaccache),
                 BatchDuplicated(θ, seeds), Const(p))
             for i in eachindex(θ)
                 if J isa Vector
