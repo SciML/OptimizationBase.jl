@@ -85,7 +85,7 @@ function set_runtime_activity2(
     Enzyme.set_runtime_activity(a, RTA)
 end
 function_annotation(::Nothing) = Nothing
-function_annotation(::AutoEnzyme{<:Any, A}) = A
+function_annotation(::AutoEnzyme{<:Any, A}) where A = A
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         adtype::AutoEnzyme, p, num_cons = 0;
         g = false, h = false, hv = false, fg = false, fgh = false,
