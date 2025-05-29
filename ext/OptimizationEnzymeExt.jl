@@ -103,7 +103,7 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         set_runtime_activity2(Enzyme.Forward, adtype.mode)
     end
 
-    func_annot = function_annotation(adtype.function_annotation)
+    func_annot = function_annotation(adtype)
 
     if g == true && f.grad === nothing
         function grad(res, θ, p = p)
