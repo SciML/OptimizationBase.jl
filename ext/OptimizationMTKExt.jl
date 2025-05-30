@@ -20,7 +20,8 @@ function OptimizationBase.instantiate_function(
         ucons = fill(0.0,
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
-    f = OptimizationProblem(sys, x, p, grad = g, hess = h,
+    # don't need to pass `x` or `p` since they're defaults now
+    f = OptimizationProblem(sys, nothing; grad = g, hess = h,
         sparse = true, cons_j = cons_j, cons_h = cons_h,
         cons_sparse = true).f
 
@@ -70,7 +71,8 @@ function OptimizationBase.instantiate_function(
         ucons = fill(0.0,
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
-    f = OptimizationProblem(sys, cache.u0, cache.p, grad = g, hess = h,
+    # don't need to pass `x` or `p` since they're defaults now
+    f = OptimizationProblem(sys, nothing; grad = g, hess = h,
         sparse = true, cons_j = cons_j, cons_h = cons_h,
         cons_sparse = true).f
 
@@ -118,7 +120,8 @@ function OptimizationBase.instantiate_function(
         ucons = fill(0.0,
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
-    f = OptimizationProblem(sys, x, p, grad = g, hess = h,
+    # don't need to pass `x` or `p` since they're defaults now
+    f = OptimizationProblem(sys, nothing; grad = g, hess = h,
         sparse = false, cons_j = cons_j, cons_h = cons_h,
         cons_sparse = false).f
 
@@ -168,7 +171,8 @@ function OptimizationBase.instantiate_function(
         ucons = fill(0.0,
             num_cons))))
     #sys = ModelingToolkit.structural_simplify(sys)
-    f = OptimizationProblem(sys, cache.u0, cache.p, grad = g, hess = h,
+    # don't need to pass `x` or `p` since they're defaults now
+    f = OptimizationProblem(sys, nothing; grad = g, hess = h,
         sparse = false, cons_j = cons_j, cons_h = cons_h,
         cons_sparse = false).f
 
