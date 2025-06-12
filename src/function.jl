@@ -113,7 +113,7 @@ end
 
 function OptimizationBase.instantiate_function(
         f::OptimizationFunction{true}, x, ::SciMLBase.NoAD,
-        p, num_cons = 0; kwargs...)
+        p, num_cons = 0; sense, kwargs...)
     if f.grad === nothing
         grad = nothing
     else
@@ -205,7 +205,8 @@ function OptimizationBase.instantiate_function(
     expr = symbolify(f.expr)
     cons_expr = symbolify.(f.cons_expr)
 
-    return OptimizationFunction{true}(f.f, SciMLBase.NoAD();
+    obj_f = (x,p) -> sense == MaxSense ? -1.0* f.f(x,p) : f.f(x,p)
+    return OptimizationFunction{true}(obj_f, SciMLBase.NoAD();
         grad = grad, fg = fg, hess = hess, fgh = fgh, hv = hv,
         cons = cons, cons_j = cons_j, cons_h = cons_h,
         cons_vjp = cons_vjp, cons_jvp = cons_jvp,
