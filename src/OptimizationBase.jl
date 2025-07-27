@@ -4,10 +4,6 @@ using DocStringExtensions
 using Reexport
 @reexport using SciMLBase, ADTypes
 
-if !isdefined(Base, :get_extension)
-    using Requires
-end
-
 using ArrayInterface, Base.Iterators, SparseArrays, LinearAlgebra
 import SciMLBase: OptimizationProblem,
                   OptimizationFunction, ObjSense,
