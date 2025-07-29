@@ -85,7 +85,7 @@ function set_runtime_activity2(
     Enzyme.set_runtime_activity(a, RTA)
 end
 function_annotation(::Nothing) = Nothing
-function_annotation(::AutoEnzyme{<:Any, A}) where A = A
+function_annotation(::AutoEnzyme{<:Any, A}) where {A} = A
 function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         adtype::AutoEnzyme, p, num_cons = 0;
         g = false, h = false, hv = false, fg = false, fgh = false,
@@ -225,9 +225,12 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
         if func_annot <: Enzyme.Const
             basefunc = Enzyme.Const(basefunc)
         elseif func_annot <: Enzyme.Duplicated || func_annot <: Enzyme.BatchDuplicated
-            basefunc = Enzyme.BatchDuplicated(basefunc, Tuple(make_zero(basefunc) for i in 1:length(x)))
-        elseif func_annot <: Enzyme.DuplicatedNoNeed || func_annot <: Enzyme.BatchDuplicatedNoNeed
-            basefunc = Enzyme.BatchDuplicatedNoNeed(basefunc, Tuple(make_zero(basefunc) for i in 1:length(x)))
+            basefunc = Enzyme.BatchDuplicated(
+                basefunc, Tuple(make_zero(basefunc) for i in 1:length(x)))
+        elseif func_annot <: Enzyme.DuplicatedNoNeed ||
+               func_annot <: Enzyme.BatchDuplicatedNoNeed
+            basefunc = Enzyme.BatchDuplicatedNoNeed(
+                basefunc, Tuple(make_zero(basefunc) for i in 1:length(x)))
         end
         # else
         #     seeds = Enzyme.onehot(zeros(eltype(x), num_cons))
@@ -241,12 +244,14 @@ function OptimizationBase.instantiate_function(f::OptimizationFunction{true}, x,
                 Enzyme.make_zero!(jc)
             end
             Enzyme.make_zero!(y)
-            if func_annot <: Enzyme.Duplicated || func_annot <: Enzyme.BatchDuplicated || func_annot <: Enzyme.DuplicatedNoNeed || func_annot <: Enzyme.BatchDuplicatedNoNeed                
+            if func_annot <: Enzyme.Duplicated || func_annot <: Enzyme.BatchDuplicated ||
+               func_annot <: Enzyme.DuplicatedNoNeed ||
+               func_annot <: Enzyme.BatchDuplicatedNoNeed
                 for bf in basefunc.dval
                     Enzyme.make_zero!(bf)
                 end
             end
-            Enzyme.autodiff(fmode, basefunc , BatchDuplicated(y, Jaccache),
+            Enzyme.autodiff(fmode, basefunc, BatchDuplicated(y, Jaccache),
                 BatchDuplicated(θ, seeds), Const(p))
             for i in eachindex(θ)
                 if J isa Vector
