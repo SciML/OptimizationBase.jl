@@ -78,13 +78,17 @@ function instantiate_function(
 
     if fgh == true && f.fgh === nothing
         function fgh!(G, H, θ)
-            (y, _, _) = value_derivative_and_second_derivative!(
+            (y,
+                _,
+                _) = value_derivative_and_second_derivative!(
                 f.f, G, H, prep_hess, soadtype, θ, Constant(p))
             return y
         end
         if p !== SciMLBase.NullParameters() && p !== nothing
             function fgh!(G, H, θ, p)
-                (y, _, _) = value_derivative_and_second_derivative!(
+                (y,
+                    _,
+                    _) = value_derivative_and_second_derivative!(
                     f.f, G, H, prep_hess, soadtype, θ, Constant(p))
                 return y
             end
@@ -338,13 +342,17 @@ function instantiate_function(
 
     if fgh == true && f.fgh === nothing
         function fgh!(θ)
-            (y, G, H) = value_derivative_and_second_derivative(
+            (y,
+                G,
+                H) = value_derivative_and_second_derivative(
                 f.f, prep_hess, adtype, θ, Constant(p))
             return y, G, H
         end
         if p !== SciMLBase.NullParameters() && p !== nothing
             function fgh!(θ, p)
-                (y, G, H) = value_derivative_and_second_derivative(
+                (y,
+                    G,
+                    H) = value_derivative_and_second_derivative(
                     f.f, prep_hess, adtype, θ, Constant(p))
                 return y, G, H
             end

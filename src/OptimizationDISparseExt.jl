@@ -41,13 +41,15 @@ function instantiate_function(
             prep_grad = prepare_gradient(f.f, adtype.dense_ad, x, Constant(p))
         end
         function fg!(res, θ)
-            (y, _) = value_and_gradient!(
+            (y,
+                _) = value_and_gradient!(
                 f.f, res, prep_grad, adtype.dense_ad, θ, Constant(p))
             return y
         end
         if p !== SciMLBase.NullParameters()
             function fg!(res, θ, p)
-                (y, _) = value_and_gradient!(
+                (y,
+                    _) = value_and_gradient!(
                     f.f, res, prep_grad, adtype.dense_ad, θ, Constant(p))
                 return y
             end
@@ -81,13 +83,17 @@ function instantiate_function(
 
     if fgh == true && f.fgh === nothing
         function fgh!(G, H, θ)
-            (y, _, _) = value_derivative_and_second_derivative!(
+            (y,
+                _,
+                _) = value_derivative_and_second_derivative!(
                 f.f, G, H, prep_hess, soadtype.dense_ad, θ, Constant(p))
             return y
         end
         if p !== SciMLBase.NullParameters() && p !== nothing
             function fgh!(G, H, θ, p)
-                (y, _, _) = value_derivative_and_second_derivative!(
+                (y,
+                    _,
+                    _) = value_derivative_and_second_derivative!(
                     f.f, G, H, prep_hess, soadtype.dense_ad, θ, Constant(p))
                 return y
             end
@@ -336,14 +342,18 @@ function instantiate_function(
 
     if fgh == true && f.fgh === nothing
         function fgh!(θ)
-            (y, G, H) = value_derivative_and_second_derivative(
+            (y,
+                G,
+                H) = value_derivative_and_second_derivative(
                 f.f, prep_hess, soadtype, θ, Constant(p))
             return y, G, H
         end
 
         if p !== SciMLBase.NullParameters() && p !== nothing
             function fgh!(θ, p)
-                (y, G, H) = value_derivative_and_second_derivative(
+                (y,
+                    G,
+                    H) = value_derivative_and_second_derivative(
                     f.f, prep_hess, soadtype, θ, Constant(p))
                 return y, G, H
             end
