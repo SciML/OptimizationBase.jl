@@ -13,7 +13,8 @@ using Test, ReverseDiff
         # 1. Matrix Factorization
         @show adtype
         function matrix_factorization_objective(X, A)
-            U, V = @view(X[1:size(A, 1), 1:Int(size(A, 2) / 2)]),
+            U,
+            V = @view(X[1:size(A, 1), 1:Int(size(A, 2) / 2)]),
             @view(X[1:size(A, 1), (Int(size(A, 2) / 2) + 1):size(A, 2)])
             return norm(A - U * V')
         end
