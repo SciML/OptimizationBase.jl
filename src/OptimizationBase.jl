@@ -24,6 +24,7 @@ Base.length(::NullData) = 0
 include("adtypes.jl")
 include("symify.jl")
 include("cache.jl")
+include("state.jl")
 include("OptimizationDIExt.jl")
 include("OptimizationDISparseExt.jl")
 include("function.jl")
