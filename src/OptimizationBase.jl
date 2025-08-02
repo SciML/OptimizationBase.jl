@@ -3,7 +3,7 @@ module OptimizationBase
 using DocStringExtensions
 using Reexport
 @reexport using SciMLBase, ADTypes
-
+using Logging, ProgressLogging, ConsoleProgressMonitor, TerminalLoggers, LoggingExtras
 using ArrayInterface, Base.Iterators, SparseArrays, LinearAlgebra
 import SciMLBase: OptimizationProblem,
                   OptimizationFunction, ObjSense,
