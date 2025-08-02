@@ -3,7 +3,7 @@ module OptimizationBase
 using DocStringExtensions
 using Reexport
 @reexport using SciMLBase, ADTypes
-
+using Logging, ProgressLogging, ConsoleProgressMonitor, TerminalLoggers, LoggingExtras
 using ArrayInterface, Base.Iterators, SparseArrays, LinearAlgebra
 import SciMLBase: OptimizationProblem,
                   OptimizationFunction, ObjSense,
@@ -24,6 +24,8 @@ Base.length(::NullData) = 0
 include("adtypes.jl")
 include("symify.jl")
 include("cache.jl")
+include("state.jl")
+include("utils.jl")
 include("OptimizationDIExt.jl")
 include("OptimizationDISparseExt.jl")
 include("function.jl")
